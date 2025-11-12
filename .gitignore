@@ -1,0 +1,100 @@
+# ==========================================
+# Big Data Project - .gitignore
+# ==========================================
+
+# ==========================================
+# 1. Data files (LOẠI TRỪ TẤT CẢ DỮ LIỆU LớN)
+# ==========================================
+# CSV raw data
+data/
+data_parquet/
+data_analysis/
+
+# Nếu muốn giữ cấu trúc thư mục, uncomment dòng dưới:
+# !data/.gitkeep
+# !data_parquet/.gitkeep
+# !data_analysis/.gitkeep
+
+# ==========================================
+# 2. Logs & temporary files
+# ==========================================
+logs/
+*.log
+*.tmp
+*.temp
+
+# ==========================================
+# 3. Python
+# ==========================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# ==========================================
+# 4. Spark & Hadoop
+# ==========================================
+# Hadoop binaries (nặng, không cần push)
+hadoop/
+*.exp
+*.iobj
+*.ipdb
+
+# Spark temporary files
+metastore_db/
+derby.log
+spark-warehouse/
+*.crc
+_SUCCESS
+
+# ==========================================
+# 5. OS specific
+# ==========================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+
+# ==========================================
+# 6. Parquet & output files
+# ==========================================
+*.parquet
+*.snappy
+*.gzip
+
+# ==========================================
+# 7. Large visualizations (optional)
+# ==========================================
+# Uncomment nếu file viz quá lớn:
+# *.png
+# *.html
+# *.pdf
