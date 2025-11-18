@@ -103,6 +103,25 @@ python preprocess.py
 python prophet_train.py
 ```
 
+### ⭐ NEW: Streaming Pipeline (Week 6)
+
+```bash
+# Chạy toàn bộ streaming pipeline (Thu thập + Xử lý + Dự báo)
+python run_streaming_pipeline.py
+
+# Hoặc chạy từng bước:
+# 1. Thu thập dữ liệu real-time từ Binance API
+python streaming_collector.py
+
+# 2. Xử lý streaming data với Spark
+python streaming_processor.py
+
+# 3. Dự báo với Prophet (updated model)
+python streaming_forecast.py
+```
+
+📖 **Chi tiết:** Xem [STREAMING_README.md](STREAMING_README.md)
+
 ## 📈 Features
 
 ### Data Processing
