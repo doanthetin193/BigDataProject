@@ -16,7 +16,7 @@ spark.sparkContext.setLogLevel("WARN")
 # Base dir
 base_dir = r"D:\BigDataProject"
 
-# Input paths (đã clean)
+# Input paths (đã clean từ clean_parquet.py)
 btc_path = os.path.join(base_dir, "data_parquet", "btc_clean")
 eth_path = os.path.join(base_dir, "data_parquet", "eth_clean")
 
@@ -29,7 +29,7 @@ daily_raw_csv = os.path.join(analysis_dir, "daily_raw_csv")
 
 os.makedirs(analysis_dir, exist_ok=True)
 
-# Read BTC + ETH parquet
+# Read BTC + ETH parquet (đã clean)
 btc_df = spark.read.parquet(btc_path).withColumn("symbol", F.lit("BTCUSDT"))
 eth_df = spark.read.parquet(eth_path).withColumn("symbol", F.lit("ETHUSDT"))
 

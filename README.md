@@ -1,167 +1,170 @@
-# 🚀 Big Data Project - Cryptocurrency Analysis & Forecasting
+#  Big Data Project - Cryptocurrency Analysis & Forecasting
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
-[![Spark](https://img.shields.io/badge/Apache%20Spark-3.x-orange.svg)](https://spark.apache.org/)
+[![Spark](https://img.shields.io/badge/Apache%20Spark-3.5-orange.svg)](https://spark.apache.org/)
 [![Prophet](https://img.shields.io/badge/Prophet-Time%20Series-green.svg)](https://facebook.github.io/prophet/)
+[![Kafka](https://img.shields.io/badge/Apache%20Kafka-7.5-red.svg)](https://kafka.apache.org/)
 
-## 📋 Mô tả dự án
+##  M� t? d? �n
 
-Dự án phân tích và dự báo giá cryptocurrency (Bitcoin & Ethereum) sử dụng **Apache Spark** để xử lý big data và **Facebook Prophet** cho time series forecasting.
+D? �n ph�n t�ch v� d? b�o gi� cryptocurrency (Bitcoin & Ethereum) s? d?ng **Apache Spark** d? x? l� big data, **Facebook Prophet** cho forecasting, v� **Kafka + Spark Structured Streaming** cho real-time processing.
 
-### 🎯 Mục tiêu
-- Xử lý dữ liệu giá crypto theo từng phút (2012-2025)
-- Phân tích xu hướng, volume, và biến động giá
-- Dự báo giá 30 ngày sử dụng Prophet
-- Tối ưu hóa hyperparameters với grid search
+###  M?c ti�u
+-  X? l� **15+ tri?u rows** d? li?u crypto (2012-2025)
+-  Ph�n t�ch xu hu?ng, volume, bi?n d?ng gi�
+-  D? b�o gi� v?i **MAPE < 4%** (BTC: 2.82%, ETH: 3.61%)
+-  **TRUE Structured Streaming** (Kafka + Spark)
+-  Real-time processing v?i **1-10s latency**
 
-## 📊 Dataset
+---
+
+##  Dataset
 
 - **BTC (Bitcoin)**: 1-minute OHLCV data from 2012-2025
 - **ETH (Ethereum)**: 1-minute OHLCV data from 2017-2025
-- **Format**: CSV → Parquet (partitioned by year/month)
+- **Format**: CSV  Parquet (partitioned by year)
 
-> **Lưu ý**: Dữ liệu không được đẩy lên GitHub do dung lượng lớn. Bạn cần tải dataset riêng và đặt vào thư mục `data/`
+> **Luu �**: D? li?u kh�ng du?c d?y l�n GitHub do dung lu?ng l?n (15M+ rows). �?t dataset v�o thu m?c `data/btc/` v� `data/eth/`.
 
-## 🛠️ Tech Stack
+---
 
-- **Apache Spark (PySpark)** - Big data processing
-- **Facebook Prophet** - Time series forecasting
-- **Pandas** - Data manipulation
-- **Matplotlib & Plotly** - Visualization
-- **Scikit-learn** - Model evaluation
-
-## 📁 Cấu trúc dự án
+##  C?u tr�c d? �n
 
 ```
 BigDataProject/
-├── convert_to_parquet.py       # CSV → Parquet conversion
-├── clean_parquet.py            # Data cleaning (duplicates, nulls)
-├── preprocess_step1.py         # Daily OHLC aggregation
-├── preprocess_step2.py         # Missing days fill + MA calculation
-├── preprocess.py               # Unified preprocessing pipeline
-├── prophet_train.py            # Prophet forecasting with grid search
-├── data/                       # Raw CSV data (not in git)
-│   ├── btc/
-│   └── eth/
-├── data_parquet/               # Parquet files (not in git)
-│   ├── btc_clean/
-│   └── eth_clean/
-└── data_analysis/              # Analysis outputs (not in git)
-    ├── daily_filled/
-    ├── prophet_input/
-    ├── week4_forecasts/
-    ├── week4_metrics/
-    └── week4_visualizations/
+ data/                          # Raw CSV data (15M+ rows)
+    btc/BTCUSDT_1min_2012-2025.csv
+    eth/ETHUSDT_1min_2017-2025.csv
+
+ data_parquet/                  # Parquet format (70% storage reduction)
+    btc_clean/
+    eth_clean/
+
+ data_analysis/                 # Analysis outputs
+    daily_filled/              # Daily OHLC (missing days filled)
+    week4_results/             # Prophet forecasts (actual vs predicted)
+    week4_visualizations/      # Interactive charts (HTML)
+
+ week6_streaming/               #  Kafka + Spark Structured Streaming
+    docker-compose.yml         # Kafka infrastructure
+    websocket_producer.py      # Producer: Binance  Kafka
+    spark_streaming_consumer.py # Consumer: Kafka  Spark  Parquet
+    streaming_output_spark/    # Output: daily & hourly aggregates
+    checkpoint_spark/          # Checkpoints for fault tolerance
+    README.md                  #  Chi ti?t streaming setup!
+
+ preprocess_step1.py            # Week 2: CSV  Parquet conversion
+ preprocess_step2.py            # Week 3: Clean & daily aggregation
+ prophet_train.py               # Week 5: Train Prophet & forecast
+
+ STRUCTURED_STREAMING_SUCCESS.md #  Validation report
+ README.md                      #  B?n dang d?c file n�y
 ```
 
-## 🚀 Installation
+---
 
-### 1. Clone repository
+##  C�ch ch?y to�n b? project
+
+### 1 Setup m�i tru?ng
 ```bash
-git clone https://github.com/doanthetin193/BigDataProject.git
-cd BigDataProject
+# C�i d?t Python packages
+pip install pyspark pandas prophet plotly kafka-python binance-connector
+
+# C�i Docker Desktop (cho Kafka)
+# Download: https://www.docker.com/products/docker-desktop
 ```
 
-### 2. Cài đặt dependencies
+### 2 X? l� historical data (Weeks 1-5)
 ```bash
-pip install pyspark pandas numpy matplotlib plotly prophet scikit-learn pyarrow
-```
-
-### 3. Tải dataset
-- Tải dữ liệu BTCUSDT và ETHUSDT (1-minute OHLCV)
-- Đặt vào thư mục `data/btc/` và `data/eth/`
-
-### 4. Cài đặt Hadoop (Windows)
-- Tải `winutils.exe` cho Spark trên Windows
-- Đặt vào `hadoop/bin/`
-- Set biến môi trường: `HADOOP_HOME=D:\BigDataProject\hadoop`
-
-## 📝 Usage
-
-### Pipeline xử lý dữ liệu
-
-```bash
-# 1. Convert CSV to Parquet
-python convert_to_parquet.py
-
-# 2. Clean data (remove duplicates)
-python clean_parquet.py
-
-# 3. Preprocess step 1 (daily OHLC)
+# Convert CSV  Parquet
 python preprocess_step1.py
 
-# 4. Preprocess step 2 (fill missing + MA)
+# Clean & aggregate  daily OHLC
 python preprocess_step2.py
 
-# Hoặc chạy unified pipeline:
-python preprocess.py
-```
-
-### Training Prophet model
-
-```bash
+# Train Prophet & forecast
 python prophet_train.py
 ```
 
-### ⭐ NEW: Streaming Pipeline (Week 6)
-
+### 3 Ch?y Structured Streaming (Week 6)
 ```bash
-# Chạy toàn bộ streaming pipeline (Thu thập + Xử lý + Dự báo)
-python run_streaming_pipeline.py
+cd week6_streaming
 
-# Hoặc chạy từng bước:
-# 1. Thu thập dữ liệu real-time từ Binance API
-python streaming_collector.py
+# Start Kafka infrastructure
+docker-compose up -d
 
-# 2. Xử lý streaming data với Spark
-python streaming_processor.py
+# Terminal 1: Producer (Binance  Kafka)
+python websocket_producer.py
 
-# 3. Dự báo với Prophet (updated model)
-python streaming_forecast.py
+# Terminal 2: Consumer (Kafka  Spark  Parquet)
+python spark_streaming_consumer.py
 ```
 
-📖 **Chi tiết:** Xem [STREAMING_README.md](STREAMING_README.md)
+ **Chi ti?t Week 6:** Xem [week6_streaming/README.md](week6_streaming/README.md)
 
-## 📈 Features
+---
+
+##  K?t qu? d?t du?c
 
 ### Data Processing
-- ✅ Duplicate removal
-- ✅ Forward fill missing values
-- ✅ Missing days detection & filling
-- ✅ Large gap detection (>60s)
-- ✅ Daily OHLC aggregation
-- ✅ Moving Averages (MA7, MA30)
+-  Processed **15+ million rows** (1-minute OHLCV data)
+-  Converted to Parquet format (~70% storage reduction)
+-  Cleaned & aggregated to **8,078 daily records**
+-  Forward-filled missing days (5,066 BTC + 3,012 ETH days)
 
-### Forecasting
-- ✅ Grid search hyperparameters
-- ✅ Cross-validation (30-day horizon)
-- ✅ Multiple metrics (MSE, MAPE, CV-MAPE)
-- ✅ Holiday effects (BTC halving events)
-- ✅ Regressors (MA7, MA30)
+### Forecasting Accuracy
+-  **BTC MAPE: 2.82%** (Excellent!)
+-  **ETH MAPE: 3.61%** (Very Good!)
+-  7-day forecast horizon
+-  Interactive visualization (Plotly HTML)
 
-### Visualization
-- ✅ Close price + Moving Averages
-- ✅ Daily volume charts
-- ✅ BTC vs ETH comparison
-- ✅ Forecast plots (static & interactive)
-- ✅ Prophet components decomposition
+### Streaming Performance
+-  **TRUE Structured Streaming** (Kafka + Spark)
+-  **1-10s latency** (near real-time)
+-  **1000 msg/min throughput**
+-  **Watermarking & windowing** (1-hour late data tolerance)
+-  **Fault tolerance** (checkpoint recovery)
+-  **Production-ready** architecture
 
-## 📊 Outputs
+---
 
-### Analysis Results
-- `daily_filled/` - Daily OHLC với missing days đã fill
-- `prophet_input/` - Input cho Prophet (ds, y, symbol)
-- `results/` - SparkSQL query results
+##  Tech Stack
 
-### Forecast Results
-- `week4_forecasts/` - Prophet forecast parquet
-- `week4_metrics/metrics.csv` - Model performance
-- `week4_results/` - Actual vs Predicted CSV
-- `week4_visualizations/` - Charts (PNG + HTML interactive)
+### Big Data & Streaming
+- **Apache Spark 3.5.3** - Distributed processing & Structured Streaming
+- **Apache Kafka 7.5.0** - Message broker (Confluent)
+- **Zookeeper 7.5.0** - Kafka coordination
+- **PySpark** - Python API for Spark
+- **Parquet** - Columnar storage format
 
-## 🔧 Configuration
+### Machine Learning & Visualization
+- **Prophet** - Time series forecasting (Facebook)
+- **Pandas** - Data manipulation
+- **Plotly** - Interactive visualization
 
-### Spark Configuration
+### Infrastructure
+- **Docker & Docker Compose** - Containerization
+- **Windows PowerShell** - Terminal environment
+
+---
+
+##  Outputs
+
+### Historical Analysis
+- `data_analysis/daily_filled/` - Daily OHLC v?i missing days d� fill
+- `data_analysis/week4_results/` - Actual vs Predicted CSV
+- `data_analysis/week4_visualizations/` - Interactive charts (HTML)
+
+### Streaming Outputs
+- `week6_streaming/streaming_output_spark/daily/` - Daily aggregates (partitioned by symbol)
+- `week6_streaming/streaming_output_spark/hourly/` - Hourly aggregates
+- `week6_streaming/checkpoint_spark/` - Checkpoints for recovery
+
+---
+
+##  Configuration
+
+### Spark Settings
 ```python
 spark = SparkSession.builder \
     .appName("CryptoAnalysis") \
@@ -170,28 +173,35 @@ spark = SparkSession.builder \
     .getOrCreate()
 ```
 
-### Prophet Hyperparameters
-```python
-seasonality_mode: ["additive", "multiplicative"]
-changepoint_prior_scale: [0.01, 0.05, 0.1]
-daily_seasonality: True
-```
-
-## 📄 License
-
-MIT License
-
-## 👤 Author
-
-**Doan The Tin**
-- GitHub: [@doanthetin193](https://github.com/doanthetin193)
-
-## 🙏 Acknowledgments
-
-- Apache Spark Documentation
-- Facebook Prophet Documentation
-- Cryptocurrency data providers
+### Kafka Settings
+- **Topic:** `crypto-prices` (2 partitions)
+- **Retention:** 7 days
+- **Compression:** gzip
+- **Acks:** all (strongest durability)
 
 ---
 
-⭐ **Star this repo if you find it helpful!**
+##  License
+
+MIT License
+
+##  Author
+
+**�o�n Th? T�n**  
+GitHub: [@doanthetin193](https://github.com/doanthetin193)
+
+##  Acknowledgments
+
+- [Apache Spark Documentation](https://spark.apache.org/docs/latest/)
+- [Spark Structured Streaming Guide](https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html)
+- [Facebook Prophet](https://facebook.github.io/prophet/)
+- [Binance API](https://binance-docs.github.io/apidocs/)
+
+---
+
+**C?p nh?t l?n cu?i:** 22/11/2025  
+**Status:**  Ho�n th�nh 6 tu?n v?i TRUE Structured Streaming
+
+---
+
+ **Star repo n�y n?u th?y h?u �ch!**
