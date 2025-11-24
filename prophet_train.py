@@ -49,7 +49,7 @@ spark = (
 spark.sparkContext.setLogLevel("WARN")
 
 # ==========================================================
-# 3️⃣ Paths Setup
+# 3️⃣ Paths Setup + Auto Backup
 # ==========================================================
 analysis_dir = os.path.join(base_dir, "data_analysis")
 prophet_path = os.path.join(analysis_dir, "prophet_input")
@@ -59,6 +59,27 @@ forecasts_dir = os.path.join(analysis_dir, "week4_forecasts")
 metrics_dir = os.path.join(analysis_dir, "week4_metrics")
 vis_path = os.path.join(analysis_dir, "week4_visualizations")
 results_path = os.path.join(analysis_dir, "week4_results")
+
+# Backup directories
+forecasts_dir_old = os.path.join(analysis_dir, "week4_forecasts_old")
+metrics_dir_old = os.path.join(analysis_dir, "week4_metrics_old")
+vis_path_old = os.path.join(analysis_dir, "week4_visualizations_old")
+results_path_old = os.path.join(analysis_dir, "week4_results_old")
+
+# Auto backup: nếu thư mục new có file → copy sang old trước khi ghi đè
+import shutil
+for new_dir, old_dir in [
+    (forecasts_dir, forecasts_dir_old),
+    (metrics_dir, metrics_dir_old),
+    (vis_path, vis_path_old),
+    (results_path, results_path_old)
+]:
+    if os.path.exists(new_dir) and os.listdir(new_dir):
+        # Có file trong thư mục new → backup sang old
+        if os.path.exists(old_dir):
+            shutil.rmtree(old_dir)  # Xóa old cũ
+        shutil.copytree(new_dir, old_dir)  # Copy new → old
+        logger.info(f"✅ Backed up {os.path.basename(new_dir)} → {os.path.basename(old_dir)}")
 
 for p in [forecasts_dir, metrics_dir, vis_path, results_path]:
     os.makedirs(p, exist_ok=True)
