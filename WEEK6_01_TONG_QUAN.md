@@ -492,7 +492,6 @@ Step 6: Save to Parquet
                     │ streaming_      │
                     │ output_spark/   │
                     │   daily/        │
-                    │   hourly/       │
                     └─────────────────┘
 ```
 
@@ -611,7 +610,6 @@ Step 6: Save to Parquet
 │                                                                     │
 │  2. Window: Nhóm dữ liệu theo thời gian                            │
 │     - Daily window: Tổng hợp theo ngày                             │
-│     - Hourly window: Tổng hợp theo giờ                             │
 │                                                                     │
 │  3. Trigger: Tần suất output                                       │
 │     - 10 seconds: Output mỗi 10 giây                               │
@@ -685,13 +683,10 @@ D:\BigDataProject\
 │   └── 📁 week4_metrics/          # MAPE metrics
 │
 ├── 📁 streaming_output_spark/     # Streaming output
-│   ├── 📁 daily/                  # Daily aggregates
-│   └── 📁 hourly/                 # Hourly aggregates
+│   └─ 📁 daily/                  # Daily aggregates
 │
-├── 📁 checkpoint_spark/           # Spark checkpoints
-│   ├── 📁 daily/
-│   ├── 📁 hourly/
-│   └── 📁 crypto_daily_stats/
+├─ 📁 checkpoint_spark/           # Spark checkpoints
+│   └─ 📁 daily/
 │
 └── 📁 logs/                       # Log files
     └── 📄 prophet_train.log

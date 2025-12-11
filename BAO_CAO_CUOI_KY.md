@@ -951,7 +951,7 @@ Structured Streaming hỗ trợ 3 output modes:
 | Input | Raw data (immutable, append-only) |
 | Output | Batch views (precomputed) |
 | Công nghệ | Hadoop, Spark Batch |
-| Tần suất | Theo lịch (daily, hourly) |
+| Tần suất | Theo lịch (daily, weekly) |
 | Ưu điểm | Chính xác, complete |
 | Nhược điểm | Latency cao |
 
@@ -1797,9 +1797,8 @@ Hệ thống cần đáp ứng các yêu cầu chức năng sau:
 │  │                                                                  │
 │  └── week6_streaming/               # Streaming outputs            │
 │      ├── streaming_output_spark/                                   │
-│      │   ├── daily/                 # Daily aggregates            │
-│      │   │   └── symbol=XXX/                                      │
-│      │   └── hourly/                # Hourly aggregates           │
+│      │   └── daily/                 # Daily aggregates            │
+│      │       └── symbol=XXX/                                      │
 │      └── checkpoint_spark/          # Checkpoints                  │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -1903,9 +1902,7 @@ Hệ thống cần đáp ứng các yêu cầu chức năng sau:
 │  │                                                                │ │
 │  │  streaming_output_spark/                                       │ │
 │  │  ├── daily/symbol=BTCUSDT/                                    │ │
-│  │  ├── daily/symbol=ETHUSDT/                                    │ │
-│  │  ├── hourly/symbol=BTCUSDT/                                   │ │
-│  │  └── hourly/symbol=ETHUSDT/                                   │ │
+│  │  └── daily/symbol=ETHUSDT/                                    │ │
 │  │                                                                │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                                                                     │

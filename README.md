@@ -5,14 +5,14 @@
 [![Prophet](https://img.shields.io/badge/Prophet-Time%20Series-green.svg)](https://facebook.github.io/prophet/)
 [![Kafka](https://img.shields.io/badge/Apache%20Kafka-7.5-red.svg)](https://kafka.apache.org/)
 
-##  Mô t? d? án
+##  Mï¿½ t? d? ï¿½n
 
-D? án phân tích và d? báo giá cryptocurrency (Bitcoin & Ethereum) s? d?ng **Apache Spark** d? x? lý big data, **Facebook Prophet** cho forecasting, và **Kafka + Spark Structured Streaming** cho real-time processing.
+D? ï¿½n phï¿½n tï¿½ch vï¿½ d? bï¿½o giï¿½ cryptocurrency (Bitcoin & Ethereum) s? d?ng **Apache Spark** d? x? lï¿½ big data, **Facebook Prophet** cho forecasting, vï¿½ **Kafka + Spark Structured Streaming** cho real-time processing.
 
-###  M?c tiêu
--  X? lý **15+ tri?u rows** d? li?u crypto (2012-2025)
--  Phân tích xu hu?ng, volume, bi?n d?ng giá
--  D? báo giá v?i **MAPE < 4%** (BTC: 2.82%, ETH: 3.61%)
+###  M?c tiï¿½u
+-  X? lï¿½ **15+ tri?u rows** d? li?u crypto (2012-2025)
+-  Phï¿½n tï¿½ch xu hu?ng, volume, bi?n d?ng giï¿½
+-  D? bï¿½o giï¿½ v?i **MAPE < 4%** (BTC: 2.82%, ETH: 3.61%)
 -  **TRUE Structured Streaming** (Kafka + Spark)
 -  Real-time processing v?i **1-10s latency**
 
@@ -24,11 +24,11 @@ D? án phân tích và d? báo giá cryptocurrency (Bitcoin & Ethereum) s? d?ng **Apac
 - **ETH (Ethereum)**: 1-minute OHLCV data from 2017-2025
 - **Format**: CSV  Parquet (partitioned by year)
 
-> **Luu ý**: D? li?u không du?c d?y lên GitHub do dung lu?ng l?n (15M+ rows). Ð?t dataset vào thu m?c `data/btc/` và `data/eth/`.
+> **Luu ï¿½**: D? li?u khï¿½ng du?c d?y lï¿½n GitHub do dung lu?ng l?n (15M+ rows). ï¿½?t dataset vï¿½o thu m?c `data/btc/` vï¿½ `data/eth/`.
 
 ---
 
-##  C?u trúc d? án
+##  C?u trï¿½c d? ï¿½n
 
 ```
 BigDataProject/
@@ -49,7 +49,7 @@ BigDataProject/
     docker-compose.yml         # Kafka infrastructure
     websocket_producer.py      # Producer: Binance  Kafka
     spark_streaming_consumer.py # Consumer: Kafka  Spark  Parquet
-    streaming_output_spark/    # Output: daily & hourly aggregates
+    streaming_output_spark/    # Output: daily aggregates
     checkpoint_spark/          # Checkpoints for fault tolerance
     README.md                  #  Chi ti?t streaming setup!
 
@@ -58,23 +58,23 @@ BigDataProject/
  prophet_train.py               # Week 5: Train Prophet & forecast
 
  STRUCTURED_STREAMING_SUCCESS.md #  Validation report
- README.md                      #  B?n dang d?c file này
+ README.md                      #  B?n dang d?c file nï¿½y
 ```
 
 ---
 
-##  Cách ch?y toàn b? project
+##  Cï¿½ch ch?y toï¿½n b? project
 
-### 1 Setup môi tru?ng
+### 1 Setup mï¿½i tru?ng
 ```bash
-# Cài d?t Python packages
+# Cï¿½i d?t Python packages
 pip install pyspark pandas prophet plotly kafka-python binance-connector
 
-# Cài Docker Desktop (cho Kafka)
+# Cï¿½i Docker Desktop (cho Kafka)
 # Download: https://www.docker.com/products/docker-desktop
 ```
 
-### 2 X? lý historical data (Weeks 1-5)
+### 2 X? lï¿½ historical data (Weeks 1-5)
 ```bash
 # Convert CSV  Parquet
 python preprocess_step1.py
@@ -151,13 +151,12 @@ python spark_streaming_consumer.py
 ##  Outputs
 
 ### Historical Analysis
-- `data_analysis/daily_filled/` - Daily OHLC v?i missing days dã fill
+- `data_analysis/daily_filled/` - Daily OHLC v?i missing days dï¿½ fill
 - `data_analysis/week4_results/` - Actual vs Predicted CSV
 - `data_analysis/week4_visualizations/` - Interactive charts (HTML)
 
 ### Streaming Outputs
 - `week6_streaming/streaming_output_spark/daily/` - Daily aggregates (partitioned by symbol)
-- `week6_streaming/streaming_output_spark/hourly/` - Hourly aggregates
 - `week6_streaming/checkpoint_spark/` - Checkpoints for recovery
 
 ---
@@ -187,7 +186,7 @@ MIT License
 
 ##  Author
 
-**Ðoàn Th? Tín**  
+**ï¿½oï¿½n Th? Tï¿½n**  
 GitHub: [@doanthetin193](https://github.com/doanthetin193)
 
 ##  Acknowledgments
@@ -200,8 +199,8 @@ GitHub: [@doanthetin193](https://github.com/doanthetin193)
 ---
 
 **C?p nh?t l?n cu?i:** 22/11/2025  
-**Status:**  Hoàn thành 6 tu?n v?i TRUE Structured Streaming
+**Status:**  Hoï¿½n thï¿½nh 6 tu?n v?i TRUE Structured Streaming
 
 ---
 
- **Star repo này n?u th?y h?u ích!**
+ **Star repo nï¿½y n?u th?y h?u ï¿½ch!**

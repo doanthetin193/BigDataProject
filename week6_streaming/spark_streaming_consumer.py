@@ -152,43 +152,9 @@ print("✓ Window: 1 day")
 print("✓ Aggregations: OHLC, Volume, Trades\n")
 
 # ============================================================================
-# STEP 6: WINDOW AGGREGATION - HOURLY
+# STEP 6: WRITE STREAMS
 # ============================================================================
-print("STEP 6: Hourly aggregation...")
-
-hourlyDF = watermarkedDF \
-    .groupBy(
-        window(col("event_timestamp"), "1 hour"),
-        col("symbol")
-    ) \
-    .agg(
-        first("open").alias("hourly_open"),
-        max("high").alias("hourly_high"),
-        min("low").alias("hourly_low"),
-        last("price").alias("hourly_close"),  # Use 'price' (lastPrice from Binance)
-        sum("volume").alias("hourly_volume"),
-        count("*").alias("tick_count"),
-        avg("price").alias("avg_price")
-    ) \
-    .select(
-        col("window.start").alias("hour_start"),
-        col("symbol"),
-        col("hourly_open"),
-        col("hourly_high"),
-        col("hourly_low"),
-        col("hourly_close"),
-        col("hourly_volume"),
-        col("tick_count"),
-        col("avg_price")
-    )
-
-print("✓ Window: 1 hour")
-print("✓ Aggregations: OHLC, Volume\n")
-
-# ============================================================================
-# STEP 7: WRITE STREAMS
-# ============================================================================
-print("STEP 7: Starting streaming queries...\n")
+print("STEP 6: Starting streaming queries...\n")
 
 # Query 1: Daily data to Parquet
 daily_query = dailyDF.writeStream \
@@ -204,21 +170,7 @@ print("✓ Query 1: Daily aggregates → Parquet")
 print(f"  Output: {OUTPUT_PATH}/daily")
 print(f"  Trigger: 10 seconds")
 
-# Query 2: Hourly data to Parquet
-hourly_query = hourlyDF.writeStream \
-    .outputMode("append") \
-    .format("parquet") \
-    .option("path", f"{OUTPUT_PATH}/hourly") \
-    .option("checkpointLocation", f"{CHECKPOINT_PATH}/hourly") \
-    .partitionBy("symbol") \
-    .trigger(processingTime="10 seconds") \
-    .start()
-
-print("✓ Query 2: Hourly aggregates → Parquet")
-print(f"  Output: {OUTPUT_PATH}/hourly")
-print(f"  Trigger: 10 seconds")
-
-# Query 3: Raw stream to Console (monitoring)
+# Query 2: Raw stream to Console (monitoring)
 console_query = streamDF \
     .select(
         col("symbol"),

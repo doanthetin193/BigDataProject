@@ -28,7 +28,6 @@ Kafka Topic: crypto-prices
 spark_streaming_consumer.py (Spark Structured Streaming)
     ↓
 ├─ Parquet (daily aggregates)
-├─ Parquet (hourly aggregates)
 ├─ Console (monitoring)
 └─ Memory Table (analytics)
 ```
@@ -73,7 +72,6 @@ docker exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --top
 
 # Xem output files
 ls streaming_output_spark/daily/
-ls streaming_output_spark/hourly/
 ```
 
 ---
@@ -83,7 +81,7 @@ ls streaming_output_spark/hourly/
 ### Structured Streaming Features
 - ✅ **Continuous processing** - Micro-batches mỗi 10 giây
 - ✅ **Watermarking** - Xử lý late data trong vòng 1 giờ
-- ✅ **Window aggregations** - Daily & Hourly tumbling windows
+- ✅ **Window aggregations** - Daily tumbling windows
 - ✅ **Stateful operations** - OHLC, volume, trade count
 - ✅ **Multiple sinks** - Parquet, Console, Memory table
 - ✅ **Checkpointing** - Fault tolerance, recovery on restart
@@ -119,15 +117,6 @@ Schema:
 - `total_trades` - Số lượng trades
 - `avg_price` - Giá trung bình
 
-### Hourly Aggregates
-```
-streaming_output_spark/hourly/
-└── symbol=BTCUSDT/
-    └── part-00000-xxx.parquet
-```
-
-Schema tương tự nhưng theo giờ.
-
 ---
 
 ## 🔧 Cấu hình
@@ -141,7 +130,7 @@ Schema tương tự nhưng theo giờ.
 ### Spark (spark_streaming_consumer.py)
 - **Trigger interval:** 10 seconds (Parquet), 30 seconds (Console)
 - **Watermark:** 1 hour
-- **Window:** 1 day (daily), 1 hour (hourly)
+- **Window:** 1 day
 - **Checkpoint:** checkpoint_spark/
 
 ---

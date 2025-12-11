@@ -57,7 +57,7 @@ Speed Layer chịu trách nhiệm:
    └── Spark Structured Streaming
 
 4. AGGREGATION theo thời gian
-   └── Daily, Hourly windows
+   └── Daily windows
 
 5. LƯU TRỮ kết quả
    └── Parquet files
@@ -164,7 +164,6 @@ Giải pháp: Speed Layer bổ sung dữ liệu real-time
 │                      │ streaming_       │                          │
 │                      │ output_spark/    │                          │
 │                      │   daily/         │                          │
-│                      │   hourly/        │                          │
 │                      └──────────────────┘                          │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -988,19 +987,7 @@ daily_query = dailyDF.writeStream \
     .start()
 
 # ============================================
-# QUERY 2: Hourly data → Parquet
-# ============================================
-hourly_query = hourlyDF.writeStream \
-    .outputMode("append") \
-    .format("parquet") \
-    .option("path", "streaming_output_spark/hourly") \
-    .option("checkpointLocation", "checkpoint_spark/hourly") \
-    .partitionBy("symbol") \
-    .trigger(processingTime="10 seconds") \
-    .start()
-
-# ============================================
-# QUERY 3: Raw data → Console (monitoring)
+# QUERY 2: Raw data → Console (monitoring)
 # ============================================
 console_query = streamDF \
     .select("symbol", "price", "volume", "price_change_percent", "event_timestamp") \
@@ -1047,32 +1034,23 @@ Checkpoint là gì?
 
 Cấu trúc checkpoint folder:
 checkpoint_spark/
-├── daily/
-│   ├── offsets/           # Kafka offsets đã đọc
-│   │   ├── 0
-│   │   ├── 1
-│   │   └── ...
-│   ├── commits/           # Batches đã commit
-│   ├── state/             # Aggregation state
-│   └── metadata           # Query metadata
-├── hourly/
-│   └── ...
-└── crypto_daily_stats/
-    └── ...
+└── daily/
+    ├── offsets/           # Kafka offsets đã đọc
+    │   ├── 0
+    │   ├── 1
+    │   └── ...
+    ├── commits/           # Batches đã commit
+    ├── state/             # Aggregation state
+    └── metadata           # Query metadata
 ```
 
 ### 8.3. Output Structure
 
 ```
 streaming_output_spark/
-├── daily/
-│   ├── symbol=BTCUSDT/
-│   │   ├── part-00000-xxx.snappy.parquet
-│   │   └── ...
-│   └── symbol=ETHUSDT/
-│       └── ...
-└── hourly/
+└── daily/
     ├── symbol=BTCUSDT/
+    │   ├── part-00000-xxx.snappy.parquet
     │   └── ...
     └── symbol=ETHUSDT/
         └── ...
