@@ -270,7 +270,7 @@ try:
 except ImportError:
     logger.warning("⚠️ pyarrow not installed — run: pip install pyarrow")
 
-# Load dữ liệu Prophet input + MA7/MA30
+# Load dữ liệu Prophet input + MA7/MA30 từ daily_filled (like original)
 df = spark.read.parquet(prophet_path).select("ds", "y", "symbol")
 daily_filled = (
     spark.read.parquet(daily_filled_path)
@@ -281,7 +281,7 @@ daily_filled = (
 df = df.join(daily_filled, on=["ds", "symbol"], how="left").cache()
 
 expected_cols = {"ds", "y", "symbol", "ma7", "ma30"}
-if not expected_cols.issubset(set(df.columns)): #kiểm tra xem các cột kỳ vọng có nằm trong đó không
+if not expected_cols.issubset(set(df.columns)):
     raise ValueError(f"Input parquet thiếu các cột: {expected_cols - set(df.columns)}")
 
 symbols = df.select("symbol").distinct().toPandas()["symbol"].tolist()

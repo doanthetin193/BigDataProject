@@ -102,12 +102,12 @@ print("\n[STEP 3] Merging batch + streaming data...")
 batch_cols = set(df_batch.columns)
 streaming_cols = set(df_streaming.columns)
 
-# Use common columns
-common_cols = ["symbol", "date", "open", "high", "low", "close", "volume"]
+# Use common columns (with daily_ prefix)
+common_cols = ["symbol", "date", "daily_open", "daily_high", "daily_low", "daily_close", "daily_volume"]
 
-# Check if we have MA7/MA30 in batch
-if "MA7" in batch_cols and "MA30" in batch_cols:
-    common_cols.extend(["MA7", "MA30"])
+# Check if we have ma7/ma30 in batch
+if "ma7" in batch_cols and "ma30" in batch_cols:
+    common_cols.extend(["ma7", "ma30"])
 
 df_batch_aligned = df_batch.select(*common_cols)
 
@@ -115,11 +115,11 @@ df_batch_aligned = df_batch.select(*common_cols)
 available_streaming_cols = [c for c in common_cols if c in streaming_cols]
 df_streaming_aligned = df_streaming.select(*available_streaming_cols)
 
-# If streaming doesn't have MA7/MA30, add null columns
-if "MA7" not in streaming_cols:
+# If streaming doesn't have ma7/ma30, add null columns
+if "ma7" not in streaming_cols:
     from pyspark.sql.functions import lit
-    df_streaming_aligned = df_streaming_aligned.withColumn("MA7", lit(None).cast("double"))
-    df_streaming_aligned = df_streaming_aligned.withColumn("MA30", lit(None).cast("double"))
+    df_streaming_aligned = df_streaming_aligned.withColumn("ma7", lit(None).cast("double"))
+    df_streaming_aligned = df_streaming_aligned.withColumn("ma30", lit(None).cast("double"))
 
 # Union
 df_merged = df_batch_aligned.union(df_streaming_aligned)
@@ -141,8 +141,8 @@ print("\n[STEP 4] Recomputing MA7/MA30 for merged timeline...")
 window_ma7 = Window.partitionBy("symbol").orderBy("date").rowsBetween(-6, 0)
 window_ma30 = Window.partitionBy("symbol").orderBy("date").rowsBetween(-29, 0)
 
-df_merged = df_merged.withColumn("MA7", avg("close").over(window_ma7))
-df_merged = df_merged.withColumn("MA30", avg("close").over(window_ma30))
+df_merged = df_merged.withColumn("ma7", avg("daily_close").over(window_ma7))
+df_merged = df_merged.withColumn("ma30", avg("daily_close").over(window_ma30))
 
 print(f"  ✅ MA7 and MA30 recomputed")
 
@@ -160,13 +160,11 @@ df_merged.write.mode("overwrite").partitionBy("symbol", "year").parquet(output_p
 
 print(f"  ✅ Saved to {output_path}")
 
-# Update prophet_input
+# Update prophet_input (minimal schema)
 df_prophet = df_merged.select(
     col("date").alias("ds"),
-    col("close").alias("y"),
-    "symbol",
-    "MA7",
-    "MA30"
+    col("daily_close").alias("y"),
+    "symbol"
 ).orderBy("symbol", "ds")
 
 df_prophet.write.mode("overwrite").partitionBy("symbol").parquet("data_analysis/prophet_input")

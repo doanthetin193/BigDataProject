@@ -83,14 +83,13 @@ for d in daily_fulls[1:]:
     daily_all = daily_all.unionByName(d, allowMissingColumns=True)
 daily_all = daily_all.withColumn("year", F.year("date")).withColumn("month", F.month("date"))
 
-# Save parquet & csv
+# Save parquet only (no CSV to avoid Parquet read conflict)
 daily_all.write.mode("overwrite").partitionBy("symbol", "year", "month").parquet(daily_filled_path)
-daily_all.coalesce(4).write.mode("overwrite").csv(os.path.join(daily_filled_path, "csv"), header=True)
 print(f"✅ Saved daily_filled -> {daily_filled_path}")
 
-# Prophet input
+# Prophet input - Extract minimal schema
 prophet_df = daily_all.select(F.col("date").alias("ds"), F.col("daily_close").alias("y"), "symbol")
-prophet_df.coalesce(4).write.mode("overwrite").parquet(prophet_path)
+prophet_df.write.mode("overwrite").partitionBy("symbol").parquet(prophet_path)
 print(f"✅ Saved Prophet input -> {prophet_path}")
 
 # Queries
