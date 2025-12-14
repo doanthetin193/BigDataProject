@@ -73,6 +73,9 @@ kafkaDF = spark.readStream \
     .option("subscribe", KAFKA_TOPIC) \
     .option("startingOffsets", "earliest") \
     .option("failOnDataLoss", "false") \
+    .option("maxOffsetsPerTrigger", 1000) \
+    .option("kafka.session.timeout.ms", "30000") \
+    .option("kafka.request.timeout.ms", "40000") \
     .load()
 
 print(f"✓ Connected to Kafka: {KAFKA_BOOTSTRAP_SERVERS}")

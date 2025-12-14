@@ -65,6 +65,11 @@ spark-warehouse/
 *.crc
 _SUCCESS
 
+# Spark Streaming checkpoints & outputs
+checkpoint_spark/
+streaming_output_spark/
+streaming_output_spark_BATCH/
+
 # ==========================================
 # 5. OS specific
 # ==========================================

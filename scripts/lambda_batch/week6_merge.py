@@ -61,74 +61,81 @@ except Exception as e:
 # ============================================================================
 print("\n[STEP 2] Reading Speed Layer (streaming data)...")
 
-streaming_path = "streaming_output_spark/daily"
+# Try batch reader output first, fallback to streaming output
+streaming_paths = [
+    "week6_streaming/streaming_output_spark_BATCH",
+    "streaming_output_spark/daily"
+]
 
-if not os.path.exists(streaming_path):
-    print(f"  ⚠️  No streaming data found at {streaming_path}")
-    print("  Start streaming first:")
-    print("    cd week6_streaming")
-    print("    docker-compose up -d")
-    print("    python websocket_producer.py")
-    print("    python spark_streaming_consumer.py")
-    print("\n  Or proceed with batch data only...")
-    
-    print("\n✅ Using batch data only (no streaming data to merge)")
-    spark.stop()
-    exit(0)
+streaming_path = None
+for path in streaming_paths:
+    if os.path.exists(path):
+        streaming_path = path
+        print(f"  ✅ Found Speed Layer data: {path}")
+        break
 
-try:
-    df_streaming = spark.read.parquet(streaming_path)
-    streaming_count = df_streaming.count()
-    print(f"  ✅ Streaming data loaded: {streaming_count:,} rows")
-    
-    df_streaming.groupBy("symbol").agg(
-        count("*").alias("days"),
-        min("date").alias("first_date"),
-        max("date").alias("last_date")
-    ).show(truncate=False)
-    
-except Exception as e:
-    print(f"  ⚠️  Error reading streaming data: {e}")
+if not streaming_path:
+    print(f"  ⚠️  No streaming data found")
     print("  Using batch data only...")
-    spark.stop()
-    exit(0)
+    df_streaming = None
+else:
+    print(f"  Reading from: {streaming_path}")
+    try:
+        df_streaming = spark.read.parquet(streaming_path)
+        streaming_count = df_streaming.count()
+        print(f"  ✅ Streaming data loaded: {streaming_count:,} rows")
+        
+        df_streaming.groupBy("symbol").agg(
+            count("*").alias("days"),
+            min("date").alias("first_date"),
+            max("date").alias("last_date")
+        ).show(truncate=False)
+        
+    except Exception as e:
+        print(f"  ⚠️  Error reading streaming data: {e}")
+        print("  Using batch data only...")
+        df_streaming = None
 
 # ============================================================================
 # STEP 3: ALIGN SCHEMAS AND MERGE
 # ============================================================================
 print("\n[STEP 3] Merging batch + streaming data...")
 
-# Ensure both have same columns
-batch_cols = set(df_batch.columns)
-streaming_cols = set(df_streaming.columns)
+if df_streaming is None:
+    print("  ⚠️  No streaming data - using batch only")
+    df_merged = df_batch
+else:
+    # Ensure both have same columns
+    batch_cols = set(df_batch.columns)
+    streaming_cols = set(df_streaming.columns)
 
-# Use common columns (with daily_ prefix)
-common_cols = ["symbol", "date", "daily_open", "daily_high", "daily_low", "daily_close", "daily_volume"]
+    # Use common columns (with daily_ prefix)
+    common_cols = ["symbol", "date", "daily_open", "daily_high", "daily_low", "daily_close", "daily_volume"]
 
-# Check if we have ma7/ma30 in batch
-if "ma7" in batch_cols and "ma30" in batch_cols:
-    common_cols.extend(["ma7", "ma30"])
+    # Check if we have ma7/ma30 in batch
+    if "ma7" in batch_cols and "ma30" in batch_cols:
+        common_cols.extend(["ma7", "ma30"])
 
-df_batch_aligned = df_batch.select(*common_cols)
+    df_batch_aligned = df_batch.select(*common_cols)
 
-# For streaming, select available columns
-available_streaming_cols = [c for c in common_cols if c in streaming_cols]
-df_streaming_aligned = df_streaming.select(*available_streaming_cols)
+    # For streaming, select available columns
+    available_streaming_cols = [c for c in common_cols if c in streaming_cols]
+    df_streaming_aligned = df_streaming.select(*available_streaming_cols)
 
-# If streaming doesn't have ma7/ma30, add null columns
-if "ma7" not in streaming_cols:
-    from pyspark.sql.functions import lit
-    df_streaming_aligned = df_streaming_aligned.withColumn("ma7", lit(None).cast("double"))
-    df_streaming_aligned = df_streaming_aligned.withColumn("ma30", lit(None).cast("double"))
+    # If streaming doesn't have ma7/ma30, add null columns
+    if "ma7" not in streaming_cols:
+        from pyspark.sql.functions import lit
+        df_streaming_aligned = df_streaming_aligned.withColumn("ma7", lit(None).cast("double"))
+        df_streaming_aligned = df_streaming_aligned.withColumn("ma30", lit(None).cast("double"))
 
-# Union
-df_merged = df_batch_aligned.union(df_streaming_aligned)
+    # Union
+    df_merged = df_batch_aligned.union(df_streaming_aligned)
 
-# Remove duplicates (keep first occurrence)
-df_merged = df_merged.dropDuplicates(["symbol", "date"])
+    # Remove duplicates (keep first occurrence)
+    df_merged = df_merged.dropDuplicates(["symbol", "date"])
 
-# Sort
-df_merged = df_merged.orderBy("symbol", "date")
+    # Sort
+    df_merged = df_merged.orderBy("symbol", "date")
 
 merged_count = df_merged.count()
 print(f"  ✅ Merged data: {merged_count:,} rows")
@@ -154,11 +161,18 @@ print("\n[STEP 5] Saving unified dataset...")
 # Add year for partitioning
 df_merged = df_merged.withColumn("year", year("date"))
 
+# Strategy: Cache merged data, then save
+# (Avoids Spark conflict when reading/writing same path)
+df_merged.cache()
+final_count = df_merged.count()  # Trigger cache
+print(f"  Cached {final_count:,} rows for write")
+
 # Save to daily_filled (overwrite with merged data)
 output_path = "data_analysis/daily_filled"
 df_merged.write.mode("overwrite").partitionBy("symbol", "year").parquet(output_path)
 
 print(f"  ✅ Saved to {output_path}")
+df_merged.unpersist()  # Release cache
 
 # Update prophet_input (minimal schema)
 df_prophet = df_merged.select(
