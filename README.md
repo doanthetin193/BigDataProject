@@ -84,12 +84,18 @@ BigDataProject/
 │   └── prophet_visualizations/    # Biểu đồ HTML tương tác
 │
 ├── week6_streaming/               # Speed Layer
-│   ├── docker-compose.yml         # Kafka + Zookeeper
+│   ├── docker-compose.yml         # Kafka + Zookeeper setup
 │   ├── websocket_producer.py      # Binance WebSocket → Kafka
-│   ├── spark_streaming_consumer.py # Kafka → Spark Streaming (production)
-│   ├── kafka_batch_reader.py      # Kafka → Batch read (demo nhanh)
-│   ├── checkpoint_spark/          # Checkpoint metadata
-│   └── streaming_output_spark_BATCH/ # Speed Layer output (2 rows)
+│   ├── spark_streaming_consumer.py # Kafka → Spark Streaming (PRODUCTION)
+│   │                              #   • Watermark: 1h
+│   │                              #   • Window: 1 day tumbling
+│   │                              #   • Output: Chỉ khi window close
+│   ├── kafka_batch_reader.py      # Kafka → Batch read (DEMO)
+│   │                              #   • Batch mode: Đọc tất cả messages
+│   │                              #   • Aggregate: Daily OHLCV
+│   │                              #   • Output: Ngay lập tức
+│   ├── checkpoint_spark/          # Checkpoint metadata (git ignored)
+│   └── streaming_output_spark_BATCH/ # Speed Layer output (git ignored)
 │
 ├── scripts/                       # Source code
 │   ├── preprocessing/             # 4 scripts tiền xử lý
@@ -157,6 +163,41 @@ python scripts/lambda_batch/week6_backfill_batch.py
 
 ### **4. Speed Layer (Real-time Streaming)**
 
+#### **QUAN TRỌNG - 2 Cách chạy Speed Layer:**
+
+**A. Production Mode** (Spark Streaming Consumer):
+```bash
+cd week6_streaming
+docker-compose up -d
+python websocket_producer.py      # Terminal 1
+python spark_streaming_consumer.py # Terminal 2
+```
+- ✅ **Watermark:** 1 giờ
+- ✅ **Window:** 1 ngày (tumbling)
+- ⚠️ **Lưu ý:** Phải đợi đến 00:00 ngày hôm sau + 1h watermark → Window mới close → Mới có output file
+- **Use case:** Production (chạy liên tục 24/7)
+
+**B. Demo Mode** (Kafka Batch Reader - **KHUYẾN NGHỊ CHO DEMO**):
+```bash
+cd week6_streaming
+docker-compose up -d
+
+# Chạy Producer 1-2 phút (lấy ~1000-2000 messages)
+python websocket_producer.py
+# Ctrl+C sau 1-2 phút
+
+# Chạy Batch Reader (output ngay lập tức)
+python kafka_batch_reader.py
+```
+- ✅ **Batch Mode:** Đọc tất cả messages từ Kafka
+- ✅ **Aggregate:** Daily OHLCV
+- ✅ **Output ngay:** Không cần đợi window close
+- **Use case:** Demo nhanh, testing, POC
+
+**Giải thích cho giảng viên:**
+> "Em đã implement Spark Streaming Consumer production với 1-day window (file `spark_streaming_consumer.py`), nhưng vì window 1 ngày nên phải đợi lâu mới có output. Để demo nhanh, em viết thêm Kafka Batch Reader (`kafka_batch_reader.py`) đọc batch mode từ Kafka và aggregate ngay. Cả 2 file đều chứng minh Kafka + Spark hoạt động tốt."
+
+**Setup Kafka:**
 ```bash
 # Bước 1: Khởi động Kafka
 cd week6_streaming
@@ -169,19 +210,15 @@ docker-compose up -d
 docker exec kafka kafka-topics --create --topic crypto-prices \
   --partitions 1 --replication-factor 1 --bootstrap-server localhost:9092
 
-# Bước 3: Chạy Producer (Terminal 1)
+# Bước 3: Chạy Producer (1-2 phút)
 python websocket_producer.py
-# Gửi real-time data từ Binance → Kafka
+# Ctrl+C sau khi thấy ~1000-2000 messages
 
-# Bước 4: Chạy Consumer (Terminal 2)
-python spark_streaming_consumer.py
-# Đọc từ Kafka → Aggregate → Parquet
-
-# Hoặc chạy batch reader (demo nhanh):
+# Bước 4: Chạy Batch Reader (demo nhanh)
 python kafka_batch_reader.py
 ```
 
-**Output:** `streaming_output_spark_BATCH/` (2 rows: BTCUSDT, ETHUSDT ngày 2025-12-14)
+**Output:** `streaming_output_spark_BATCH/` (2 rows: BTCUSDT, ETHUSDT - daily aggregate)
 
 ### **5. Serving Layer (Merge Batch + Speed)**
 
@@ -268,24 +305,74 @@ python scripts/ml_models/prophet_train.py
 
 ## 📈 Demo Workflow
 
-### **Scenario: Dự đoán giá BTC hôm nay**
+### **Quick Demo (5-10 phút) - KHUYẾN NGHỊ**
 
 ```bash
-# 1. Lấy data real-time (Speed Layer)
-python week6_streaming/websocket_producer.py  # Chạy 5 phút
-python week6_streaming/kafka_batch_reader.py   # Aggregate
+# 1. Start Kafka
+cd week6_streaming
+docker-compose up -d
+# Đợi 15s
 
-# 2. Merge với Batch Layer
+# 2. Producer - Lấy real-time data (1-2 phút)
+python websocket_producer.py
+# Ctrl+C sau ~1000-2000 messages
+
+# 3. Batch Reader - Aggregate ngay
+python kafka_batch_reader.py
+
+# 4. Verify output
+cd ..
+python -c "from pyspark.sql import SparkSession; spark = SparkSession.builder.appName('Demo').getOrCreate(); df = spark.read.parquet('week6_streaming/streaming_output_spark_BATCH/'); print(f'Speed Layer output: {df.count()} rows'); df.show(); spark.stop()"
+
+# 5. Merge Batch + Speed
 python scripts/lambda_batch/week6_merge.py
 
-# 3. Forecast với Prophet
+# 6. Prophet Forecast
 python scripts/ml_models/prophet_train.py
 
-# 4. Xem kết quả
+# 7. Xem kết quả
 # Mở: data_analysis/prophet_visualizations/BTCUSDT_forecast_interactive.html
 ```
 
+**Giải thích Demo:**
+1. ✅ **Batch Layer:** 8,140 rows historical data (đã có sẵn)
+2. ✅ **Speed Layer:** Real-time từ Kafka (demo với batch reader)
+3. ✅ **Serving Layer:** Merge + deduplication
+4. ✅ **ML:** Prophet forecast với MAPE < 4%
+5. ✅ **Visualization:** Interactive HTML chart
+
 **Kết quả:** Biểu đồ dự đoán giá BTC 30 ngày tới với confidence interval!
+
+---
+
+### **Full Scenario: Dự đoán giá BTC hôm nay từ đầu**
+
+```bash
+# 1. Preprocessing (nếu chưa có data_parquet)
+python scripts/preprocessing/convert_to_parquet.py
+python scripts/preprocessing/clean_parquet.py
+python scripts/preprocessing/preprocess_step1.py
+python scripts/preprocessing/preprocess_step2.py
+
+# 2. Backfill gaps (nếu có gap)
+python scripts/lambda_batch/week6_backfill.py
+
+# 3. Speed Layer
+cd week6_streaming
+docker-compose up -d
+python websocket_producer.py  # 1-2 phút
+python kafka_batch_reader.py
+cd ..
+
+# 4. Merge
+python scripts/lambda_batch/week6_merge.py
+
+# 5. Prophet
+python scripts/ml_models/prophet_train.py
+
+# 6. View results
+# Mở: data_analysis/prophet_visualizations/BTCUSDT_forecast_interactive.html
+```
 
 ---
 
@@ -333,6 +420,50 @@ Email: [Thêm email nếu cần]
 - **Tuần 5:** Tổ chức code, documentation
 - **Tuần 6:** Speed Layer (Kafka + Spark Streaming) ⭐
 - **Tuần 7-8:** Hoàn thiện báo cáo và demo
+
+---
+
+## 🔧 Troubleshooting
+
+### **1. Kafka Consumer Timeout**
+**Lỗi:** `TimeoutException: Timeout waiting for data from partition`
+
+**Nguyên nhân:** Topic có nhiều partition, consumer chỉ đọc partition 0
+
+**Giải pháp:**
+```bash
+# Xóa topic cũ
+docker exec kafka kafka-topics --delete --topic crypto-prices --bootstrap-server localhost:9092
+
+# Tạo lại với 1 partition
+docker exec kafka kafka-topics --create --topic crypto-prices --partitions 1 --replication-factor 1 --bootstrap-server localhost:9092
+```
+
+### **2. Streaming Consumer không tạo file**
+**Nguyên nhân:** Window 1 ngày chưa close (phải đợi đến 00:00 + 1h watermark)
+
+**Giải pháp:** Dùng Kafka Batch Reader thay vì Streaming Consumer cho demo
+```bash
+python kafka_batch_reader.py  # Output ngay lập tức
+```
+
+### **3. Binance API Timeout**
+**Lỗi:** `ConnectionTimeout` khi chạy backfill
+
+**Giải pháp:** 
+- Thử lại sau vài phút (rate limit)
+- Hoặc bỏ qua backfill, dùng data hiện có (14/12) + Speed Layer realtime (16/12)
+
+### **4. Week6_merge.py lỗi self-reference**
+**Lỗi:** `AnalysisException: Cannot overwrite a path that is also being read`
+
+**Giải pháp:** Đã fix bằng `.cache()` trước khi ghi (line 67-70 trong week6_merge.py)
+
+### **5. Docker Desktop không start**
+**Giải pháp:**
+- Restart Docker Desktop
+- Hoặc dùng WSL2 backend
+- Check port 9092 không bị chiếm
 
 ---
 
