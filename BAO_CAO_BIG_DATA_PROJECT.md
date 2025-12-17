@@ -1131,6 +1131,157 @@ if ma7 < ma30 and prev_ma7 >= prev_ma30:
 
 ---
 
+### 8.4. Streamlit Interactive Dashboard
+
+#### **A. Giới thiệu**
+
+Để nâng cao khả năng demo và trực quan hóa kết quả, project được tích hợp **Streamlit Dashboard** - một web application tương tác cho phép:
+- Xem metrics model real-time
+- Khám phá forecasts với biểu đồ interactive
+- Kiểm tra thông tin dataset chi tiết
+- Không cần chạy script Python thủ công
+
+**URL:** `http://localhost:8501` (sau khi chạy `streamlit run app.py`)
+
+---
+
+#### **B. Cấu trúc Dashboard**
+
+**1. Home Page (`app.py`)**
+```
+┌────────────────────────────────────────┐
+│ 🚀 Cryptocurrency Price Forecasting    │
+│                                        │
+│ Quick Stats:                           │
+│ • Symbols: 2                           │
+│ • Avg MAPE: 2.96%                      │
+│ • Best Model: BTCUSDT                  │
+│                                        │
+│ Lambda Architecture Overview...        │
+└────────────────────────────────────────┘
+```
+
+**Features:**
+- Project overview
+- Quick statistics (symbols, MAPE, best model)
+- Lambda Architecture explanation
+- Navigation guide
+
+---
+
+**2. Metrics Page (`pages/1_📊_Metrics.py`)**
+
+**Visualizations:**
+- **Performance table:** Symbol, MAPE, MSE, CV MAPE, hyperparameters
+- **MAPE bar chart:** So sánh error giữa BTC/ETH (color-coded)
+- **CV vs Test MAPE:** Grouped bar chart kiểm tra overfitting
+- **MSE comparison:** Mean Squared Error visualization
+- **Download button:** Export metrics.csv
+
+**Data source:** `data_analysis/prophet_metrics/metrics.csv`
+
+**Key insights:**
+- ✅ MAPE < 5% cho cả 2 symbols → Excellent accuracy
+- ✅ CV MAPE ≈ Test MAPE → Good generalization
+- ⚙️ Best hyperparameters: Additive mode, prior=0.01
+
+---
+
+**3. Forecasts Page (`pages/2_📈_Forecasts.py`)**
+
+**Visualizations:**
+- **Main chart:** Actual vs Predicted (interactive Plotly line chart)
+  - Blue line: Actual prices
+  - Orange dashed: Predictions
+  - Hover for detailed values
+- **Error distribution:** Histogram (percentage error frequency)
+- **Error over time:** Line chart (prediction error timeline)
+- **Recent predictions table:** Last N days (slider adjustable)
+- **Download button:** Export predictions CSV
+
+**Data source:** `data_analysis/prophet_results/{symbol}_actual_vs_pred.csv`
+
+**Interactivity:**
+- Symbol selector (BTC/ETH dropdown)
+- Zoom/pan on charts
+- Slider for table rows (5-30 days)
+- Hover tooltips with exact values
+
+---
+
+**4. Data Info Page (`pages/3_📁_Data_Info.py`)**
+
+**Tabs:**
+1. **Daily Filled:** Complete dataset stats (rows, date range, schema)
+2. **Daily Raw:** Pre-filled dataset info
+3. **Prophet Input:** Minimal schema for training
+
+**Data source:** Direct Parquet reads via PySpark
+
+**Information displayed:**
+- Total rows per symbol
+- First/last date
+- Schema (column names, types, nullable)
+- Sample data (first 10 rows)
+- Pipeline explanation
+
+---
+
+#### **C. Ưu điểm so với Static Files**
+
+| Aspect | Static Files (PNG/CSV) | Streamlit Dashboard |
+|--------|------------------------|---------------------|
+| **Interaction** | None | ✅ Zoom, hover, filter |
+| **Data freshness** | Manual refresh | ✅ Auto-load latest |
+| **Usability** | Open 8 files separately | ✅ One URL, navigate tabs |
+| **Professional** | Basic | ✅ Polished UI |
+| **Demo impact** | Medium | ✅ High ("Wow factor") |
+| **Setup time** | 0 hours | 2-3 hours |
+
+---
+
+#### **D. Hướng dẫn chạy**
+
+```bash
+# 1. Install dependencies
+pip install -r requirements_web.txt
+
+# 2. Run dashboard
+streamlit run app.py
+
+# 3. Open browser
+http://localhost:8501
+```
+
+**Dependencies:**
+- streamlit >= 1.28.0
+- pandas >= 2.0.0
+- plotly >= 5.17.0
+- pyspark >= 3.5.0 (already installed)
+
+**Note:** Dashboard đọc trực tiếp từ `data_analysis/` - không cần chạy lại script!
+
+---
+
+#### **E. Screenshots Demo**
+
+**Metrics Page:**
+- BTCUSDT: MAPE 2.38%, MSE 4,986,008
+- ETHUSDT: MAPE 3.54%, MSE 20,873
+- Bar chart: BTC thấp hơn ETH (màu xanh vs vàng)
+
+**Forecasts Page:**
+- Interactive line chart: Actual (blue) tracks Predicted (orange)
+- Error histogram: Concentrated around 0% (normal distribution)
+- Error timeline: Most errors < 2% (occasional spikes 4%)
+
+**Data Info Page:**
+- BTCUSDT: 5,097 rows (2012-01-01 → 2025-12-14)
+- ETHUSDT: 3,043 rows (2017-08-16 → 2025-12-14)
+- Schema: 9 columns (date, OHLC, MA7, MA30, symbol)
+
+---
+
 #### **B. Volatility Analysis**
 
 **Standard deviation by period:**
@@ -1206,6 +1357,7 @@ start data_analysis\prophet_visualizations\BTCUSDT_forecast_interactive.html
 | **ML** | Prophet 1.1 | Easy, interpretable, robust |
 | **Language** | Python 3.11 | Rich ecosystem (PySpark, pandas, scikit-learn) |
 | **Visualization** | Matplotlib, Plotly | Static & interactive charts |
+| **Dashboard** | Streamlit 1.28+ | Interactive web UI, rapid prototyping |
 
 ---
 
