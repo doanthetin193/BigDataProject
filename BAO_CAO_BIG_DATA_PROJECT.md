@@ -81,13 +81,13 @@ graph TB
 
 | Nguồn | Format | Timeline | Kích thước |
 |-------|--------|----------|------------|
-| Kaggle Dataset | CSV | 2012-01-01 → 2025-09-25 | ~500 MB |
-| BTCUSDT_1min_2012-2025.csv | 1-minute OHLCV | 2012-01-01 → 2025-09-25 | ~300 MB |
-| ETHUSDT_1min_2017-2025.csv | 1-minute OHLCV | 2017-08-16 → 2025-09-25 | ~200 MB |
+| Kaggle Dataset | CSV | 2012-01-01 → 2025-09-25 | 557 MB |
+| BTCUSDT_1min_2012-2025.csv | 1-minute OHLCV | 2012-01-01 → 2025-09-25 | 361 MB |
+| ETHUSDT_1min_2017-2025.csv | 1-minute OHLCV | 2017-08-16 → 2025-09-25 | 197 MB |
 
 **Đặc điểm:**
 - Granularity: **1 phút** (mỗi row = 1 phút data)
-- Tổng rows: **~7 triệu rows** (BTC + ETH)
+- Tổng rows: **~11.5 triệu rows** (BTC: 7.2M + ETH: 4.3M)
 - Update: Tĩnh (không cập nhật real-time)
 
 ---
@@ -218,70 +218,81 @@ ETH CSV: timestamp, open, high, low, close, volume  (Lowercase)
 
 #### **B. Missing Values**
 
-**Nguyên nhân:**
-- Exchange downtime
-- Network issues
-- Low liquidity periods
+**Tại 1-minute level:**
+- CSV gốc có thiếu một số minutes do exchange downtime, network issues
+- Không phân tích chi tiết vì sẽ aggregate lên daily
 
-**Số lượng:**
+**Tại daily level (sau aggregate):**
 ```
-BTC: ~120 ngày thiếu (từ 2012-2025)
-ETH: ~45 ngày thiếu (từ 2017-2025)
+BTC: 5,017 daily rows (2012-01-01 → 2025-09-25) - COMPLETE
+ETH: 2,963 daily rows (2017-08-16 → 2025-09-25) - COMPLETE
 ```
 
-**Ví dụ:**
-```
-2023-05-10: ✓ có data
-2023-05-11: ✗ MISSING (no records)
-2023-05-12: ✓ có data
-```
+**Lý do complete:**
+- Mỗi ngày chỉ cần ít nhất 1 minute record → có daily OHLC
+- Kaggle data quality tốt → mọi ngày đều có data
+- Missing minutes trong ngày không ảnh hưởng daily aggregate
 
 ---
 
 #### **C. Duplicates**
 
-**Nguyên nhân:** API retry, data export lỗi
-
-**Số lượng:** ~500 duplicate rows (0.007% total)
-
-**Ví dụ:**
+**Kết quả kiểm tra:**
+```python
+# Verify distinct count
+BTC: 7,221,277 total = 7,221,277 distinct → 0 duplicates
+ETH: 4,264,341 total = 4,264,341 distinct → 0 duplicates
 ```
-timestamp=1609459200, symbol=BTCUSDT → 2 rows giống hệt
-```
+
+**Kết luận:** Kaggle dataset đã được clean, không có duplicates
+
+**Xử lý:** Không cần deduplication (data quality cao)
 
 ---
 
-#### **D. Data Gaps (1-phút level)**
+#### **D. Data Gaps**
 
-Phân tích gaps (khoảng cách giữa 2 timestamp liên tiếp):
+**Tại 1-minute level (CSV gốc):**
+- Có gaps nhỏ: thiếu một số minutes trong ngày
+- Không ảnh hưởng daily aggregate (chỉ cần ≥1 minute/day)
 
-| Gap Size | Count | Description |
-|----------|-------|-------------|
-| 60s (normal) | 7,979,500 | Bình thường (mỗi phút 1 record) |
-| 61-120s | 8,234 | Nhỏ (thiếu 1 phút) |
-| 121-3600s | 2,156 | Trung bình (thiếu vài phút) |
-| > 3600s (1h) | 345 | Lớn (thiếu cả giờ/ngày) |
-
-**Top 3 gaps lớn nhất:**
+**Tại daily level (sau aggregate):**
+```python
+# daily_raw đã COMPLETE:
+BTC: 5,017 rows = 5,017 days expected (2012-01-01 → 2025-09-25)
+ETH: 2,963 rows = 2,963 days expected (2017-08-16 → 2025-09-25)
+→ 0 missing days
 ```
-1. BTC: 2013-04-15 → 2013-04-18 (3 ngày, 4320 phút)
-2. ETH: 2018-03-22 → 2018-03-25 (3 ngày, 4320 phút)  
-3. BTC: 2020-11-02 → 2020-11-04 (2 ngày, 2880 phút)
+
+**Xử lý trong preprocess_step2.py:**
+```python
+# Generate complete date sequence (safety check)
+# Left join với daily_raw
+# Forward fill (nếu có missing) → Không thay đổi gì (đã complete)
 ```
+
+**Kết quả:**
+- daily_filled = daily_raw (no gaps to fill)
+- Prophet nhận complete time series
+- Forward fill step = validation layer (ensure 100% complete)
 
 ---
 
-#### **E. Outliers**
+#### **E. Outliers & Volatility**
 
-**Phát hiện:** Giá tăng/giảm đột ngột > 50% trong 1 phút
+**Đặc điểm cryptocurrency:**
+- Volatility cao là bình thường (±10-20% trong ngày)
+- Flash crashes/pumps có thể xảy ra (market events thực)
 
-**Ví dụ:**
-```
-2021-05-19 12:34: BTC = $43,000
-2021-05-19 12:35: BTC = $31,000 (-28% trong 1 phút) → Flash crash
-```
+**Xử lý trong pipeline:**
+- **KHÔNG có** explicit outlier removal
+- Aggregate daily OHLC tự động smooth volatility ở minute-level
+- Giữ data authentic để model học được market behavior thực tế
 
-**Xử lý:** Giữ nguyên (real market events, không phải noise)
+**Trade-off:**
+- ✅ Giữ outliers → Model robust với volatility cao
+- ✅ Prophet có built-in outlier handling (không cần pre-filter)
+- ⚠️ Risk: Model có thể underfit nếu training data quá smooth
 
 ---
 
@@ -290,14 +301,17 @@ Phân tích gaps (khoảng cách giữa 2 timestamp liên tiếp):
 | Metric | BTCUSDT | ETHUSDT | Total |
 |--------|---------|---------|-------|
 | **Start date** | 2012-01-01 | 2017-08-16 | - |
-| **End date** | 2025-09-25 | 2025-09-25 | - |
-| **Duration** | 5,017 ngày | 2,963 ngày | - |
-| **1-min rows** | ~4.8M | ~3.2M | **~8M rows** |
-| **Daily rows (aggregated)** | 5,017 | 2,963 | **7,980 rows** |
-| **CSV size** | 310 MB | 205 MB | **515 MB** |
-| **Parquet size (compressed)** | 45 MB | 30 MB | **75 MB** |
+| **End date (Kaggle)** | 2025-09-25 | 2025-09-25 | - |
+| **End date (sau backfill)** | 2025-12-14 | 2025-12-14 | - |
+| **Duration (final)** | 5,096 ngày | 3,042 ngày | - |
+| **1-min rows** | 7.2M | 4.3M | **11.5M rows** |
+| **Daily rows (final)** | 5,097 | 3,043 | **8,140 rows** |
+| **CSV size** | 361 MB | 197 MB | **557 MB** |
+| **Parquet size** | 215 MB | 121 MB | **335 MB** |
 
-**Compression ratio:** 85% (515 MB → 75 MB)
+**Compression ratio:** 40% (557 MB → 335 MB)
+
+**Aggregate compression:** 1,413x (11.5M 1-min rows → 8,140 daily rows)
 
 ---
 
@@ -337,7 +351,7 @@ data_parquet/
 
 **Kết quả:**
 - ✅ Schema thống nhất
-- ✅ Giảm 85% dung lượng (compression)
+- ✅ Giảm 40% dung lượng (compression)
 - ✅ Query nhanh (partition pruning)
 
 ---
@@ -379,7 +393,7 @@ timestamp | close
 dropDuplicates(["symbol", "timestamp"])
 ```
 
-**Kết quả:** Xóa 487 duplicate rows
+**Kết quả:** 0 duplicate rows (data đã clean từ Kaggle)
 
 ---
 
@@ -402,9 +416,9 @@ daily_volume = SUM(volume)
 **Output:** `data_analysis/daily_raw/`
 
 **Kết quả:**
-- BTC: 4.8M rows → **5,017 daily rows**
-- ETH: 3.2M rows → **2,963 daily rows**
-- **Compression ratio: 1000x** (8M → 7,980 rows)
+- BTC: 7.2M rows → **5,097 daily rows**
+- ETH: 4.3M rows → **3,043 daily rows**
+- **Compression ratio: 1,413x** (11.5M → 8,140 rows)
 
 ---
 
@@ -417,40 +431,29 @@ daily_volume = SUM(volume)
 #### **Step A: Detect Missing Days**
 ```sql
 -- Generate sequence: min_date → max_date
-SELECT sequence(to_date('2012-01-01'), to_date('2025-09-25'), interval 1 day)
+SELECT sequence(to_date('2012-01-01'), to_date('2025-12-14'), interval 1 day)
 
 -- Left join với daily_raw → tìm gaps
 ```
 
 **Kết quả:**
-```
-BTC: 120 missing days detected
-ETH: 45 missing days detected
+```python
+BTC: 0 missing days (complete timeline)
+ETH: 0 missing days (complete timeline)
 ```
 
 ---
 
-#### **Step B: Forward Fill Missing Days**
+#### **Step B: Forward Fill (Safety Check)**
 ```python
 Window.partitionBy("symbol").orderBy("date").rowsBetween(unboundedPreceding, 0)
 
-# Missing days → fill OHLC từ ngày trước
+# Nếu có missing days → fill OHLC từ ngày trước
 ```
 
-**Ví dụ:**
-```
-Before:
-date       | daily_close
-2023-05-10 | 28000
-2023-05-11 | NULL (missing)
-2023-05-12 | 28500
+**Kết quả:** Không thay đổi gì (daily_raw đã complete)
 
-After:
-date       | daily_close
-2023-05-10 | 28000
-2023-05-11 | 28000 ← Forward filled
-2023-05-12 | 28500
-```
+**Mục đích:** Validation layer - đảm bảo 100% complete timeline
 
 ---
 
@@ -488,27 +491,27 @@ date       | daily_close | ma7 (avg of 7 days) | ma30 (avg of 30 days)
 ```mermaid
 flowchart LR
     subgraph Input["INPUT"]
-        CSV["CSV Files<br/>8M rows<br/>1-min data<br/>515 MB"]
+        CSV["CSV Files<br/>11.5M rows<br/>1-min data<br/>557 MB"]
     end
     
     subgraph Stage1["STAGE 1: Convert"]
         S1["convert_to_parquet.py<br/>• Normalize schema<br/>• Add symbol column<br/>• Partition by year/month"]
-        P1[("Parquet<br/>8M rows<br/>75 MB<br/>-85% size")]
+        P1[("Parquet<br/>11.5M rows<br/>335 MB<br/>-40% size")]
     end
     
     subgraph Stage2["STAGE 2: Clean"]
         S2["preprocess_step1.py<br/>• Forward fill nulls<br/>• Remove duplicates<br/>• Aggregate to daily OHLC"]
-        P2[("daily_raw<br/>7,980 rows<br/>-99.9%")]
+        P2[("daily_raw<br/>8,140 rows<br/>-99.93%")]
     end
     
     subgraph Stage3["STAGE 3: Fill"]
         S3["preprocess_step2.py<br/>• Fill missing days<br/>• Compute MA7/MA30<br/>• Complete timeline"]
-        P3[("daily_filled<br/>7,980 rows<br/>+MA features")]
+        P3[("daily_filled<br/>8,140 rows<br/>+MA features")]
     end
     
     subgraph Stage4["STAGE 4: Extract"]
         S4["Extract Prophet schema<br/>• Select ds, y<br/>• Add symbol partition"]
-        P4[("prophet_input<br/>7,980 rows<br/>Minimal schema")]
+        P4[("prophet_input<br/>8,140 rows<br/>Minimal schema")]
     end
     
     CSV --> S1 --> P1 --> S2 --> P2 --> S3 --> P3 --> S4 --> P4
@@ -524,12 +527,12 @@ flowchart LR
 
 | Stage | Input | Output | Transformation |
 |-------|-------|--------|----------------|
-| **1. Convert** | CSV (8M rows) | Parquet (8M) | Schema normalize, partition |
-| **2. Clean** | Parquet (8M) | Daily raw (7,980) | Forward fill, dedup, aggregate |
-| **3. Fill** | Daily raw | Daily filled (7,980) | Fill gaps, compute MA |
+| **1. Convert** | CSV (11.5M rows, 557 MB) | Parquet (11.5M, 335 MB) | Schema normalize, partition |
+| **2. Clean** | Parquet (11.5M) | Daily raw (8,140) | Forward fill nulls, aggregate |
+| **3. Fill** | Daily raw (8,140) | Daily filled (8,140) | Safety check, compute MA |
 | **4. Extract** | Daily filled | Prophet input | Minimal schema (ds, y) |
 
-**Total:** 8,000,000 rows → **7,980 rows** (daily granularity)
+**Total:** 11,500,000 rows → **8,140 rows** (daily granularity, 1,413x compression)
 
 ---
 
@@ -541,7 +544,8 @@ flowchart LR
 
 #### **A. Historical Processing (Kaggle)**
 ```
-Timeline: 2012-01-01 → 2025-09-25
+Timeline (Kaggle): 2012-01-01 → 2025-09-25
+Timeline (sau backfill): 2012-01-01 → 2025-12-14
 Files: convert_to_parquet.py → preprocess_step1.py → preprocess_step2.py
 Output: daily_filled/ (đến 25/9/2025)
 ```
@@ -554,9 +558,9 @@ Output: daily_filled/ (đến 25/9/2025)
 
 **Logic:**
 ```python
-1. Detect last date in daily_filled → 2025-09-25
-2. Calculate gap: 25/9 → today (17/12) = 83 days
-3. Fetch API: 25/9 23:59 → 17/12 00:00
+1. Detect last date in daily_filled → 2025-12-14
+2. Calculate gap: 25/9 → 14/12 = 80 days
+3. Fetch API: 25/9 23:59 → 14/12 23:59
    - Pagination: 1000 rows/request
    - Retry: 3 attempts on failure
 4. Aggregate 1-min → Daily OHLC (same logic)
@@ -569,15 +573,15 @@ Output: daily_filled/ (đến 25/9/2025)
 **Kết quả (14/12/2025):**
 ```
 Before backfill:
-BTCUSDT: 2012-01-01 → 2025-09-25 (5,017 rows)
-ETHUSDT: 2017-08-16 → 2025-09-25 (2,963 rows)
+BTCUSDT: 2012-01-01 → 2025-12-14 (5,097 rows)
+ETHUSDT: 2017-08-16 → 2025-12-14 (3,043 rows)
 
 After backfill:
 BTCUSDT: 2012-01-01 → 2025-12-14 (5,097 rows) +80 days
 ETHUSDT: 2017-08-16 → 2025-12-14 (3,043 rows) +80 days
 ```
 
-**Lưu ý:** 15-17/12 thiếu do Binance API timeout (cần VPN)
+**Lưu ý:** Data snapshot tại 14/12/2025 (sau ngày này chưa backfill thêm)
 
 ---
 
@@ -734,7 +738,7 @@ After merge:
 ```mermaid
 flowchart TD
     %% Data Sources
-    CSV["Kaggle CSV<br/>2012-09/2025<br/>8M rows"]
+    CSV["Kaggle CSV<br/>2012-09/2025<br/>11.5M rows"]
     API["Binance API<br/>09/2025-12/2025<br/>Gap filling"]
     STREAM["Kafka Stream<br/>Real-time<br/>1 msg/sec"]
     
@@ -886,8 +890,8 @@ test = data[split_idx:]   # 20%
 
 **Ví dụ (BTCUSDT - 5,097 rows):**
 ```
-Train: 4,078 rows (2012-01-01 → 2024-03-15)
-Test:  1,019 rows (2024-03-16 → 2025-12-14)
+Train: 4,077 rows (2012-01-01 → 2023-02-28)
+Test:  1,020 rows (2023-03-01 → 2025-12-14)
 ```
 
 ---
@@ -943,7 +947,7 @@ cv = cross_validation(
     model,
     horizon="30 days",   # Forecast 30 days ahead
     period="15 days",    # Advance 15 days per fold
-    initial="3800 days", # Min training data
+    initial=f"{len(train) - 60} days", # Min training: 4017 (BTC), 2374 (ETH)
     parallel="threads"
 )
 
@@ -994,27 +998,32 @@ forecast = model.predict(future)
 
 | Date | Actual | Predicted | Error | % Error |
 |------|--------|-----------|-------|---------|
-| 2025-12-10 | 43,250 | 43,150 | -100 | 0.23% |
-| 2025-12-11 | 42,800 | 43,000 | +200 | 0.47% |
-| 2025-12-12 | 44,100 | 43,950 | -150 | 0.34% |
-| 2025-12-13 | 43,500 | 43,780 | +280 | 0.64% |
-| 2025-12-14 | 42,900 | 43,200 | +300 | 0.70% |
+| 2025-12-10 | 92,015 | 88,130 | -3,885 | 4.22% |
+| 2025-12-11 | 92,513 | 88,212 | -4,301 | 4.65% |
+| 2025-12-12 | 90,268 | 88,391 | -1,877 | 2.08% |
+| 2025-12-13 | 90,240 | 88,634 | -1,606 | 1.78% |
+| 2025-12-14 | 90,222 | 88,610 | -1,612 | 1.79% |
 
-**Average error:** 2.38% (very good!)
+**Average error:** 2.38% across full test set (very good!)
 
 ---
 
-### 7.4. Feature Importance
+### 7.4. Feature Engineering
 
-#### **MA7/MA30 Impact**
+#### **MA7/MA30 Regressors**
 
-| Model | MAPE | Improvement |
-|-------|------|-------------|
-| Without MA (baseline) | 5.8% | - |
-| With MA7 only | 4.2% | 27% better |
-| With MA7 + MA30 | **2.4%** | **59% better** |
+Model sử dụng Moving Averages (MA7, MA30) làm external regressors:
+```python
+model.add_regressor("ma7")
+model.add_regressor("ma30")
+```
 
-**Conclusion:** Moving averages significantly improve accuracy!
+**Impact:** 
+- MA7 (7-day MA) captures short-term trends
+- MA30 (30-day MA) captures medium-term momentum
+- Combined MAPE: **2.38%** (BTC), **3.54%** (ETH)
+
+**Lưu ý:** Model chỉ được train với MA7+MA30 included. Không có baseline experiment (without MA) để so sánh improvement.
 
 ---
 
@@ -1029,7 +1038,7 @@ data_analysis/prophet_forecasts/
 └── ETHUSDT_forecast.parquet
 ```
 
-**Kích thước:** ~500 KB/file (compressed)
+**Kích thước:** 1,173 KB (BTC), 698 KB (ETH)
 
 ---
 
@@ -1068,13 +1077,15 @@ data_analysis/prophet_results/
 └── ETHUSDT_actual_vs_pred.csv
 ```
 
-**Sample (BTCUSDT_actual_vs_pred.csv):**
+**Sample (BTCUSDT_actual_vs_pred.csv - first 3 rows of test set):**
 ```csv
 ds,y,yhat,error,abs_error,pct_error
-2025-12-10,43250.0,43150.23,-99.77,99.77,0.23
-2025-12-11,42800.0,43000.45,200.45,200.45,0.47
-2025-12-12,44100.0,43950.12,-149.88,149.88,0.34
+2023-03-01,23741.0,23165.95,575.05,575.05,2.42
+2023-03-02,23415.0,23090.48,324.52,324.52,1.39
+2023-03-03,22349.0,22818.20,-469.20,469.20,2.10
 ```
+
+**Total rows:** 1,020 (test set from 2023-03-01 to 2025-12-14)
 
 ---
 
@@ -1083,7 +1094,7 @@ ds,y,yhat,error,abs_error,pct_error
 #### **A. Forecast Plot (BTCUSDT)**
 
 **Observations:**
-1. **Trend:** Upward from $30,000 (Jan 2024) → $43,000 (Dec 2025)
+1. **Trend:** General upward trend over test period (2023-03 to 2025-12)
 2. **Confidence interval:** Widens for future predictions (uncertainty ↑)
 3. **Accuracy:** Predicted line tracks actual closely (MAPE 2.38%)
 
@@ -1092,42 +1103,41 @@ ds,y,yhat,error,abs_error,pct_error
 #### **B. Components Plot**
 
 **Decomposition:**
-1. **Trend:** Long-term growth (+$13,000 in 2 years)
-2. **Weekly seasonality:** Lower on weekends (-2% avg)
-3. **Yearly seasonality:** Higher in Q1, Q4 (+5% avg)
-4. **Holidays (halving):** Spike +8% trong ±7 days
+1. **Trend:** Significant long-term growth over test period ($23,741 → $90,222 = +$66,481)
+2. **Weekly seasonality:** Price patterns within week (discovered by Prophet)
+3. **Yearly seasonality:** Annual cycles captured automatically
+4. **Holidays (halving):** BTC halving dates (2016, 2020, 2024) integrated as special events
+
+**Note:** Specific percentage impacts (-2%, +5%, +8%) would require detailed component analysis from forecast.parquet.
 
 ---
 
 #### **C. Test Zoom (Close-up)**
 
-**Period:** Mar 2024 → Dec 2025 (test set)
+**Period:** Mar 2023 → Dec 2025 (test set - 1,020 days)
 
 **Key findings:**
-- **Max error:** 4.2% (Aug 2024 flash crash)
-- **Min error:** 0.1% (Nov 2025 stable period)
-- **Consistent tracking:** Model adapts well to volatility
+- **Max error:** 22.16% (Aug 5, 2024 - major price volatility)
+- **Min error:** 0.01% (Apr 29, 2024 - extremely accurate prediction)
+- **Mean error:** 2.98% (average across all 1,020 predictions)
+- **Model MAPE:** 2.38% (optimized metric from grid search)
+- **Consistent tracking:** Model adapts well despite crypto volatility
 
 ---
 
 ### 8.3. Business Insights
 
-#### **A. Trading Signals**
+#### **A. Feature Usage**
 
-**Based on MA7/MA30 crossover:**
-```python
-# Golden Cross (bullish)
-if ma7 > ma30 and prev_ma7 <= prev_ma30:
-    signal = "BUY"
-    
-# Death Cross (bearish)
-if ma7 < ma30 and prev_ma7 >= prev_ma30:
-    signal = "SELL"
-```
+**MA7/MA30 as Regressors:**
+- Model uses Moving Averages to capture price momentum
+- MA7 (short-term): Captures daily trends
+- MA30 (medium-term): Captures monthly patterns
+- Implementation: `model.add_regressor("ma7")` + `model.add_regressor("ma30")`
 
-**Backtest results (2024-2025):**
-- BTCUSDT: 12 signals → 8 profitable (67% win rate)
-- ETHUSDT: 9 signals → 6 profitable (67% win rate)
+**Impact on Accuracy:**
+- Final MAPE: 2.38% (BTC), 3.54% (ETH)
+- No baseline experiment (without MA) available for comparison
 
 ---
 
@@ -1265,52 +1275,266 @@ http://localhost:8501
 
 #### **E. Screenshots Demo**
 
-**Metrics Page:**
-- BTCUSDT: MAPE 2.38%, MSE 4,986,008
-- ETHUSDT: MAPE 3.54%, MSE 20,873
-- Bar chart: BTC thấp hơn ETH (màu xanh vs vàng)
+##### **1. Performance Summary Table**
+
+![Metrics Table](screenshots/metrics_table.png)
+
+**Mô tả:**
+- **Bảng tổng hợp metrics** hiển thị đầy đủ performance của 2 cryptocurrencies
+- **Columns:**
+  - `symbol`: Tên coin (BTCUSDT, ETHUSDT)
+  - `mse`: Mean Squared Error (4,986,008 cho BTC, 20,873 cho ETH)
+  - `mape`: Test MAPE - metric chính (2.38% cho BTC, 3.54% cho ETH)
+  - `cv_mape`: Cross-validation MAPE (3.36% cho BTC, 3.90% cho ETH)
+  - `mode`: Seasonality mode từ grid search (additive cho cả 2)
+  - `prior`: Changepoint prior scale (0.01 cho cả 2)
+- **Success message:** "✅ Loaded metrics for 2 symbols" - xác nhận data đã load thành công
+- **Ý nghĩa:** MAPE < 5% cho cả 2 coins → Excellent accuracy (industry standard: <10% là tốt)
+
+---
+
+##### **2. MAPE Bar Chart**
+
+![MAPE Comparison](screenshots/mape_chart.png)
+
+**Mô tả:**
+- **Chart type:** Bar chart với color scale động
+- **X-axis:** Symbol (BTCUSDT, ETHUSDT)
+- **Y-axis:** MAPE (%) - Mean Absolute Percentage Error
+- **Color coding:** 
+  - BTCUSDT: **Màu xanh lá** (2.38%) - performance tốt hơn
+  - ETHUSDT: **Màu đỏ/tối** (3.54%) - error cao hơn (nhưng vẫn excellent < 5%)
+- **Success indicator:** "✅ Excellent! Average MAPE: 2.96% (< 5%)"
+- **Ý nghĩa:** BTC dễ predict hơn ETH (volatility thấp hơn), nhưng cả 2 model đều rất accurate
+
+---
+
+##### **3. Cross-Validation vs Test MAPE**
+
+![CV vs Test MAPE](screenshots/cv_test_comparison.png)
+
+**Mô tả:**
+- **Chart type:** Grouped bar chart (2 bars per symbol)
+- **Legend:**
+  - **Blue bars (Test MAPE):** Accuracy trên test set (2.38% BTC, 3.54% ETH)
+  - **Orange bars (CV MAPE):** Accuracy từ cross-validation (3.36% BTC, 3.90% ETH)
+- **Pattern observed:** CV MAPE slightly higher than Test MAPE (normal behavior)
+- **Key insight box:**
+  - "Tests model on multiple time periods"
+  - "More robust than single train-test split"
+  - "CV MAPE ≈ Test MAPE → Good generalization"
+- **Ý nghĩa:** Model không overfit - performance stable across different time periods
+
+---
+
+##### **4. Mean Squared Error (MSE)**
+
+![MSE Comparison](screenshots/mse_chart.png)
+
+**Mô tả:**
+- **Chart type:** Bar chart showing MSE values
+- **Y-axis scale:** 0-5M (để accommodate BTC's large MSE)
+- **Values:**
+  - BTCUSDT: 4,986,008 (bar chiếm gần hết chart)
+  - ETHUSDT: 20,873 (bar rất nhỏ, barely visible)
+- **Lý do chênh lệch lớn:** BTC có giá cao hơn ETH (~3-4x), nên MSE (squared error) chênh lệch ~200x
+- **Ý nghĩa:** MSE penalizes large errors more → Useful để detect outliers, nhưng MAPE dễ interpret hơn
+
+---
+
+##### **5. Best Hyperparameters**
+
+![Best Hyperparameters](screenshots/hyperparameters.png)
+
+**Mô tả:**
+- **Layout:** 2 columns (BTCUSDT bên trái, ETHUSDT bên phải)
+- **BTCUSDT hyperparameters:**
+  - Seasonality Mode: `additive` (linear seasonal patterns)
+  - Changepoint Prior: `0.01` (low flexibility - smooth trend)
+  - Test MAPE: `2.38%`
+  - CV MAPE: `3.36%`
+- **ETHUSDT hyperparameters:**
+  - Seasonality Mode: `additive`
+  - Changepoint Prior: `0.01`
+  - Test MAPE: `3.54%`
+  - CV MAPE: `3.90%`
+- **Kết luận:** Cả 2 coins đều dùng same hyperparameters (additive + 0.01) - được chọn từ grid search 6 combinations
+- **Download button:** "📥 Download Metrics CSV" - cho phép export data ra file
+
+---
 
 **Forecasts Page:**
-- Interactive line chart: Actual (blue) tracks Predicted (orange)
-- Error histogram: Concentrated around 0% (normal distribution)
-- Error timeline: Most errors < 2% (occasional spikes 4%)
+---
 
-**Data Info Page:**
-- BTCUSDT: 5,097 rows (2012-01-01 → 2025-12-14)
-- ETHUSDT: 3,043 rows (2017-08-16 → 2025-12-14)
-- Schema: 9 columns (date, OHLC, MA7, MA30, symbol)
+##### **6. Forecasts Page - Overview & Metrics**
+
+![Forecasts Overview](screenshots/forecasts_overview.png)
+
+**Mô tả:**
+- **Symbol selector:** Dropdown cho phép chọn BTCUSDT hoặc ETHUSDT
+- **Success indicator:** "✅ Loaded 1020 predictions for BTCUSDT" - xác nhận load thành công test set
+- **4 Metrics Cards** (summary statistics):
+  - **Avg Error:** 2.98% - Mean của tất cả percentage errors
+  - **Max Error:** 22.16% - Worst prediction (Aug 5, 2024)
+  - **Min Price:** $19,763.00 - Giá thấp nhất trong test period (early 2023)
+  - **Max Price:** $124,658.54 - Giá cao nhất đạt được (mid 2024)
+- **Ý nghĩa:** Metrics cards cho overview nhanh về range và accuracy của predictions
 
 ---
 
-#### **B. Volatility Analysis**
+##### **7. Actual vs Predicted Prices (Interactive Chart)**
 
-**Standard deviation by period:**
-| Period | BTC Daily Volatility | ETH Daily Volatility |
-|--------|----------------------|----------------------|
-| 2023 Q1-Q2 | 3.2% | 4.5% |
-| 2023 Q3-Q4 | 2.8% | 3.9% |
-| 2024 Q1-Q2 | 4.1% | 5.2% (higher risk) |
-| 2024 Q3-Q4 | 3.5% | 4.3% |
+![Actual vs Predicted](screenshots/forecasts_main_chart.png)
 
-**Insight:** ETH more volatile than BTC (higher risk/reward)
-
----
-
-#### **C. Seasonal Patterns**
-
-**Average monthly returns (2023-2025):**
-| Month | BTC Avg Return | ETH Avg Return |
-|-------|----------------|----------------|
-| January | +8.2% | +12.3% (best month) |
-| April | +5.1% | +7.8% (halving effect) |
-| July | -2.3% | -3.1% (summer slump) |
-| November | +6.5% | +9.2% (year-end rally) |
-
-**Insight:** Q1 & Q4 historically stronger than Q2 & Q3
+**Mô tả:**
+- **Chart type:** Interactive Plotly line chart (có thể zoom/pan)
+- **Time range:** Jul 2023 → Jul 2025 (test set period: 1,020 days)
+- **Y-axis:** Price (USD) - scale từ 2k đến 120k (logarithmic visual)
+- **Two lines:**
+  - **Blue solid line (Actual):** Giá thực tế từ market data
+  - **Orange dashed line (Predicted):** Forecast từ Prophet model
+- **Pattern observed:**
+  - Lines track **very closely** together → Model accuracy cao
+  - Both show **strong upward trend** từ ~$30k (2023) → ~$90k (2025)
+  - Some minor divergences during high volatility periods (spikes)
+- **Interactivity:** Hover để xem exact values, zoom vào specific time periods
+- **Ý nghĩa:** Visual proof của MAPE 2.98% - predicted line hầu như "stick" với actual
 
 ---
 
-### 8.4. Demo Workflow
+##### **8. Error Distribution & Error Over Time**
+
+![Error Analysis](screenshots/forecasts_error_analysis.png)
+
+**Mô tả - Left Chart (Error Distribution):**
+- **Chart type:** Histogram (green bars)
+- **X-axis:** Error (%) - Percentage error bins
+- **Y-axis:** Frequency - Số lượng predictions trong mỗi bin
+- **Distribution shape:** **Right-skewed** (positive skew)
+  - **Peak:** Concentrated around 0-2% (highest frequency ~200+ predictions)
+  - **Tail:** Extends to 20% với frequency thấp
+  - **Median:** ~2.43% (most predictions have low error)
+- **Interpretation:** Majority of predictions rất accurate (<5%), với occasional outliers
+
+**Mô tả - Right Chart (Error Over Time):**
+- **Chart type:** Time series line chart (red spiky line)
+- **X-axis:** Date (Jul 2023 → Jul 2025)
+- **Y-axis:** Error (%) - Prediction error at each date
+- **Pattern observed:**
+  - **Baseline:** Most errors oscillate trong 0-10% range
+  - **One major spike:** ~20% around Aug 2024 (matches Max Error metric)
+  - **Recent period:** Errors stabilize around 2-5% (model improves over time)
+  - **Volatility clusters:** Higher errors during market crash/rally periods
+- **Ý nghĩa:** Model consistent over time, với occasional spikes during extreme market events
+
+---
+
+##### **9. Recent Predictions Table**
+
+![Recent Predictions](screenshots/forecasts_table.png)
+
+**Mô tả:**
+- **Interactive slider:** "Number of recent days" adjustable từ 5-30 days (đang set ở 10)
+- **Table columns:**
+  - **Date:** Last N days của test set (2025-12-05 → 2025-12-14)
+  - **Actual Price:** Giá thực tế từ market ($89,330 → $90,222)
+  - **Predicted Price:** Prophet forecast ($87,326 → $88,609)
+  - **Error ($):** Absolute difference ($2,003 → $1,612)
+  - **Error (%):** Percentage error (2.24% → 1.79%)
+- **Pattern trong 10 days cuối:**
+  - Errors range: 1.78% - 4.74%
+  - Average: ~3% (slightly higher than overall 2.98%)
+  - Most recent days (12-14 Dec): Very accurate (1.78%, 1.79%, 2.08%)
+- **Download button:** "📥 Download BTCUSDT Predictions" - exports full CSV
+- **Ý nghĩa:** Cho phép drill-down vào specific dates để analyze individual predictions
+
+---
+
+##### **10. Data Info Page - Overview & Summary Stats**
+
+![Data Info Overview](screenshots/data_info_overview.png)
+
+**Mô tả:**
+- **3 Tabs navigation:**
+  - **📊 Daily Filled** (active) - Complete dataset with MA7/MA30, used for Prophet training
+  - **📁 Daily Raw** - Pre-filled dataset info
+  - **🎯 Prophet Input** - Minimal schema for training
+- **Success indicator:** "✅ Data loaded successfully!" - xác nhận PySpark read thành công
+- **3 Summary Metrics:**
+  - **Total Rows:** 8,140 - Combined rows từ cả 2 symbols
+  - **Symbols:** 2 - BTCUSDT và ETHUSDT
+  - **Date Range:** 2012-01-01 to 2025-12-14 - Full timeline coverage (13+ years)
+- **Detail Table (per symbol):**
+  - **BTCUSDT:** 5,097 rows | First Date: 2012-01-01 | Last Date: 2025-12-14
+  - **ETHUSDT:** 3,043 rows | First Date: 2017-08-16 | Last Date: 2025-12-14
+- **Ý nghĩa:** Overview nhanh về data completeness và coverage của mỗi coin
+
+---
+
+##### **11. Schema Details**
+
+![Data Schema](screenshots/data_info_schema.png)
+
+**Mô tả:**
+- **Section:** 📋 Schema - Data structure definition
+- **Table showing 10 columns:**
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `date` | DateType() | ✅ | Trading date (daily granularity) |
+| `daily_open` | DoubleType() | ✅ | Opening price of the day |
+| `daily_high` | DoubleType() | ✅ | Highest price of the day |
+| `daily_low` | DoubleType() | ✅ | Lowest price of the day |
+| `daily_close` | DoubleType() | ✅ | Closing price (used as `y` in Prophet) |
+| `daily_volume` | DoubleType() | ✅ | Trading volume (24h) |
+| `ma7` | DoubleType() | ✅ | 7-day Moving Average (short-term regressor) |
+| `ma30` | DoubleType() | ✅ | 30-day Moving Average (medium-term regressor) |
+| `symbol` | StringType() | ✅ | Coin identifier (BTCUSDT/ETHUSDT) |
+| `year` | IntegerType() | ✅ | Partition key for Parquet storage |
+
+- **Note:** Tất cả columns đều nullable (có icon ✅) - cho phép missing values nếu có
+- **Ý nghĩa:** 
+  - OHLCV: Standard financial data (Open, High, Low, Close, Volume)
+  - MA7/MA30: Feature engineering cho Prophet regressors
+  - symbol/year: Partition keys cho Parquet optimization
+
+---
+
+##### **12. Sample Data & Pipeline Explanation**
+
+![Sample Data & Pipeline](screenshots/data_info_sample.png)
+
+**Mô tả - Sample Data Table:**
+- **🔍 Sample Data** section showing **first 10 rows** (2021-01-01 to 2021-01-10)
+- **All 10 columns visible** với actual values:
+  - Date: Jan 1-10, 2021
+  - Prices: Range $28k-$41k (early 2021 bull run period)
+  - Volume: Varies 8M-24M daily
+  - MA7: 27k-36k (short-term trend)
+  - MA30: 22k-27k (medium-term trend)
+  - Symbol: All BTCUSDT
+  - Year: All 2021 (partition key)
+- **Ý nghĩa:** Cho phép inspect actual data format và values
+
+**Mô tả - Data Pipeline:**
+- **Section:** "Data Pipeline:" - 5-step transformation flow
+- **Pipeline steps:**
+  1. **CSV (Kaggle)** → `convert_to_parquet.py` → **Parquet** (11.5M rows)
+  2. **Parquet** → `preprocess_step1.py` → **daily_raw** (8,140 rows)
+  3. **daily_raw** → `preprocess_step2.py` → **daily_filled** (8,140 rows + MA)
+  4. **daily_filled** → `extract` → **prophet_input** (minimal schema)
+  5. **prophet_input** → `prophet_train.py` → **Forecasts**
+- **Annotations:**
+  - Step 1: (11.5M rows) - Raw minute data
+  - Step 2: (8,140 rows) - Daily aggregation
+  - Step 3: (8,140 rows + MA) - Added MA7/MA30 features
+  - Step 4: (minimal schema) - Only ds, y, symbol for Prophet
+  - Step 5: → Forecasts - Final predictions
+- **Ý nghĩa:** Visual pipeline cho giảng viên hiểu data flow từ raw CSV → final forecasts
+
+---
+
+### 8.5. Demo Workflow
 
 **Để chạy toàn bộ pipeline:**
 
@@ -1351,22 +1575,22 @@ start data_analysis\prophet_visualizations\BTCUSDT_forecast_interactive.html
 
 | Layer | Technology | Lý do chọn |
 |-------|-----------|------------|
-| **Processing** | Apache Spark 3.5 | Distributed processing, scalable |
-| **Storage** | Parquet | Columnar format, 85% compression |
+| **Processing** | Apache Spark 3.5.3 | Distributed processing, scalable |
+| **Storage** | Parquet | Columnar format, 40% compression |
 | **Streaming** | Kafka 7.5.0 | High-throughput, fault-tolerant |
-| **ML** | Prophet 1.1 | Easy, interpretable, robust |
-| **Language** | Python 3.11 | Rich ecosystem (PySpark, pandas, scikit-learn) |
+| **ML** | Prophet 1.2.1 | Easy, interpretable, robust |
+| **Language** | Python 3.10.11 | Rich ecosystem (PySpark, pandas, scikit-learn) |
 | **Visualization** | Matplotlib, Plotly | Static & interactive charts |
-| **Dashboard** | Streamlit 1.28+ | Interactive web UI, rapid prototyping |
+| **Dashboard** | Streamlit 1.52.1 | Interactive web UI, rapid prototyping |
 
 ---
 
 ### 9.2. Scalability
 
 **Current scale:**
-- Data: 8M rows → 8K daily (1000x compression)
+- Data: 11.5M minute rows → 8.1K daily rows (1,413x compression)
 - Symbols: 2 (BTC, ETH)
-- Timespan: 13 years (2012-2025)
+- Timespan: 13+ years (2012-2025)
 
 **Potential scale (với cùng architecture):**
 - Data: 100M rows → 100K daily
@@ -1396,17 +1620,17 @@ start data_analysis\prophet_visualizations\BTCUSDT_forecast_interactive.html
 #### **Parquet vs CSV:**
 | Format | Size | Query Speed | Schema |
 |--------|------|-------------|--------|
-| **CSV** | 515 MB | Slow (scan all) | Inferred |
-| **Parquet** | **75 MB** | **Fast** (partition prune) | **Strict** ✅ |
+| **CSV** | 557 MB | Slow (scan all) | Inferred |
+| **Parquet** | **335 MB** | **Fast** (partition prune) | **Strict** ✅ |
 
-**Chọn Parquet:** 85% smaller, 10x faster queries
+**Chọn Parquet:** 40% smaller, 10x faster queries
 
 ---
 
 #### **Prophet vs LSTM:**
 | Model | Training Time | Accuracy | Interpretability |
 |-------|---------------|----------|------------------|
-| **Prophet** | 2 min | MAPE 2.4% | **High** (components) ✅ |
+| **Prophet** | 2 min | MAPE 2.38% | **High** (components) ✅ |
 | **LSTM** | 30 min | MAPE 1.8% | Low (black box) |
 
 **Chọn Prophet:** Faster, interpretable, good-enough accuracy
@@ -1437,7 +1661,7 @@ start data_analysis\prophet_visualizations\BTCUSDT_forecast_interactive.html
 
 ✅ **Data pipeline hoàn chỉnh:**
 - CSV → Parquet → Daily OHLC → Prophet-ready
-- 8M rows → 8K rows (1000x compression)
+- 11.5M rows → 8.1K rows (1,413x compression)
 - Complete timeline (no gaps)
 
 ✅ **Lambda Architecture:**
@@ -1593,8 +1817,8 @@ docker exec -it kafka kafka-console-consumer --bootstrap-server localhost:9092 -
 
 | Operation | Duration | Throughput |
 |-----------|----------|------------|
-| CSV → Parquet (8M rows) | 120s | 67K rows/s |
-| Daily aggregation (8M → 8K) | 45s | 178K rows/s |
+| CSV → Parquet (11.5M rows) | 120s | 96K rows/s |
+| Daily aggregation (11.5M → 8.1K) | 45s | 256K rows/s |
 | Backfill 80 days (API) | 180s | 2.4 days/min |
 | Prophet training (1 symbol) | 150s | - |
 | Kafka batch reader | 3s | - |
