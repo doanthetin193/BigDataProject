@@ -12,10 +12,10 @@
 Dự án xây dựng hệ thống phân tích dữ liệu lớn và dự đoán giá tiền mã hóa (Bitcoin, Ethereum) sử dụng **Lambda Architecture** với Apache Spark, Kafka, và Facebook Prophet.
 
 ### Đặc điểm nổi bật:
-- ✅ **Quy mô dữ liệu:** 50+ triệu dòng (tick-level 1 phút, 2012-2025)
+- ✅ **Quy mô dữ liệu:** 11.5 triệu dòng (tick-level 1 phút, 2012-2025)
 - ✅ **Lambda Architecture:** Batch Layer + Speed Layer + Serving Layer
-- ✅ **Real-time Streaming:** Kafka + Spark Structured Streaming + WebSocket
-- ✅ **Machine Learning:** Facebook Prophet với MAPE < 4%
+- ✅ **Real-time Streaming:** Kafka + Spark Structured Streaming
+- ✅ **Machine Learning:** Facebook Prophet với MAPE 2.38% (BTC), 3.54% (ETH)
 - ✅ **Dữ liệu sạch:** 8,140 ngày sau xử lý, backfill gaps tự động
 
 ---
@@ -55,8 +55,8 @@ Dự án xây dựng hệ thống phân tích dữ liệu lớn và dự đoán 
                   │   MACHINE LEARNING    │
                   │                       │
                   │ • Facebook Prophet    │
-                  │ • MAPE: BTC 3.36%     │
-                  │        ETH 3.90%      │
+                  │ • MAPE: BTC 2.38%     │
+                  │        ETH 3.54%      │
                   └───────────────────────┘
 ```
 
@@ -68,8 +68,8 @@ Dự án xây dựng hệ thống phân tích dữ liệu lớn và dự đoán 
 BigDataProject/
 │
 ├── data/                          # Dữ liệu thô
-│   ├── btc/BTCUSDT_1min_2012-2025.csv  (28M rows)
-│   └── eth/ETHUSDT_1min_2017-2025.csv  (24M rows)
+│   ├── btc/BTCUSDT_1min_2012-2025.csv  (7.2M rows, 361MB)
+│   └── eth/ETHUSDT_1min_2017-2025.csv  (4.3M rows, 197MB)
 │
 ├── data_parquet/                  # Dữ liệu Parquet (partitioned by year)
 │   ├── btc_clean/                 # BTC đã làm sạch
