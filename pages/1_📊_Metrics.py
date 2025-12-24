@@ -1,6 +1,6 @@
 """
 ================================================================================
-METRICS PAGE - Model Performance Visualization
+TRANG METRICS - Hiển thị Hiệu suất Model
 ================================================================================
 """
 
@@ -12,7 +12,7 @@ import os
 
 st.set_page_config(page_title="Metrics", page_icon="📊", layout="wide")
 
-st.title("📊 Model Performance Metrics")
+st.title("📊 Chỉ số Hiệu suất Model")
 st.markdown("---")
 
 # Path
@@ -20,18 +20,18 @@ metrics_path = "data_analysis/prophet_metrics/metrics.csv"
 
 # Check if file exists
 if not os.path.exists(metrics_path):
-    st.error(f"❌ Metrics file not found: {metrics_path}")
-    st.info("💡 Please run `prophet_train.py` to generate metrics.")
+    st.error(f"❌ Không tìm thấy file metrics: {metrics_path}")
+    st.info("💡 Vui lòng chạy `prophet_train.py` để tạo metrics.")
     st.stop()
 
 # Load data
 try:
     df = pd.read_csv(metrics_path)
     
-    st.success(f"✅ Loaded metrics for {len(df)} symbols")
+    st.success(f"✅ Đã tải metrics cho {len(df)} symbols")
     
     # Display table
-    st.markdown("### 📋 Performance Summary")
+    st.markdown("### 📋 Tổng hợp Hiệu suất")
     
     # Format table
     df_display = df.copy()
@@ -42,7 +42,15 @@ try:
     st.dataframe(
         df_display,
         use_container_width=True,
-        hide_index=True
+        hide_index=True,
+        column_config={
+            'symbol': 'Symbol',
+            'mape': 'Test MAPE',
+            'cv_mape': 'CV MAPE',
+            'mse': 'MSE',
+            'mode': 'Seasonality Mode',
+            'prior': 'Changepoint Prior'
+        }
     )
     
     st.markdown("---")
@@ -51,7 +59,7 @@ try:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("### 📉 MAPE Comparison")
+        st.markdown("### 📉 So sánh MAPE")
         
         fig_mape = px.bar(
             df,
@@ -77,11 +85,11 @@ try:
         # MAPE interpretation
         avg_mape = df['mape'].mean()
         if avg_mape < 5:
-            st.success(f"✅ Excellent! Average MAPE: {avg_mape:.2f}% (< 5%)")
+            st.success(f"✅ Xuất sắc! MAPE trung bình: {avg_mape:.2f}% (< 5%)")
         elif avg_mape < 10:
-            st.info(f"ℹ️ Good! Average MAPE: {avg_mape:.2f}% (< 10%)")
+            st.info(f"ℹ️ Tốt! MAPE trung bình: {avg_mape:.2f}% (< 10%)")
         else:
-            st.warning(f"⚠️ Average MAPE: {avg_mape:.2f}% (> 10%)")
+            st.warning(f"⚠️ MAPE trung bình: {avg_mape:.2f}% (> 10%)")
     
     with col2:
         st.markdown("### 🔄 Cross-Validation vs Test MAPE")
@@ -104,7 +112,7 @@ try:
             y='Value',
             color='Metric',
             barmode='group',
-            title='Test vs Cross-Validation MAPE',
+            title='Test MAPE vs Cross-Validation MAPE',
             labels={'Value': 'MAPE (%)', 'symbol': 'Symbol'},
             color_discrete_sequence=['#1f77b4', '#ff7f0e']
         )
@@ -119,10 +127,10 @@ try:
         
         # CV interpretation
         st.info("""
-        **Cross-Validation (CV):**
-        - Tests model on multiple time periods
-        - More robust than single train-test split
-        - CV MAPE ≈ Test MAPE → Good generalization
+        **Cross-Validation (Đánh giá chéo):**
+        - Kiểm tra model trên nhiều khoảng thời gian
+        - Đáng tin cậy hơn so với chỉ test 1 lần
+        - CV MAPE ≈ Test MAPE → Model không overfitting
         """)
     
     st.markdown("---")
@@ -134,7 +142,7 @@ try:
         df,
         x='symbol',
         y='mse',
-        title='Mean Squared Error by Symbol',
+        title='Mean Squared Error theo Symbol',
         labels={'mse': 'MSE', 'symbol': 'Symbol'},
         color='symbol',
         text='mse'
@@ -151,7 +159,7 @@ try:
     st.markdown("---")
     
     # Hyperparameters
-    st.markdown("### ⚙️ Best Hyperparameters")
+    st.markdown("### ⚙️ Hyperparameters Tốt nhất")
     
     col1, col2 = st.columns(2)
     
@@ -168,27 +176,27 @@ try:
     st.markdown("---")
     
     # Download button
-    st.markdown("### 💾 Download Data")
+    st.markdown("### 💾 Tải xuống Dữ liệu")
     
     csv = df.to_csv(index=False)
     st.download_button(
-        label="📥 Download Metrics CSV",
+        label="📥 Tải Metrics CSV",
         data=csv,
         file_name="prophet_metrics.csv",
         mime="text/csv"
     )
     
 except Exception as e:
-    st.error(f"❌ Error loading metrics: {str(e)}")
+    st.error(f"❌ Lỗi khi tải metrics: {str(e)}")
     st.exception(e)
 
 # Footer
 st.markdown("---")
 st.markdown("""
-**Metrics Explanation:**
-- **MAPE**: Mean Absolute Percentage Error (lower is better, < 5% is excellent)
-- **MSE**: Mean Squared Error (penalizes large errors more)
-- **CV MAPE**: Cross-validation MAPE (tests robustness)
-- **Mode**: Seasonality mode (additive/multiplicative)
-- **Prior**: Changepoint prior scale (trend flexibility)
+**Giải thích các Chỉ số:**
+- **MAPE**: Mean Absolute Percentage Error - Sai số % trung bình (càng thấp càng tốt, < 5% là xuất sắc)
+- **MSE**: Mean Squared Error - Sai số bình phương trung bình (phạt nặng sai số lớn)
+- **CV MAPE**: Cross-validation MAPE - Kiểm tra độ ổn định model
+- **Mode**: Seasonality mode (additive/multiplicative) - Cách tính mùa vụ
+- **Prior**: Changepoint prior scale - Độ nhạy với thay đổi xu hướng
 """)

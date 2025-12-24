@@ -1,6 +1,6 @@
 """
 ================================================================================
-DATA INFO PAGE - Dataset Statistics and Information
+TRANG DATA INFO - Thống kê và Thông tin Dataset
 ================================================================================
 """
 
@@ -12,7 +12,7 @@ from pyspark.sql.functions import min, max, count
 
 st.set_page_config(page_title="Data Info", page_icon="📁", layout="wide")
 
-st.title("📁 Dataset Information")
+st.title("📁 Thông tin Dataset")
 st.markdown("---")
 
 # Initialize Spark (with error handling)
@@ -26,13 +26,13 @@ def get_spark():
         spark.sparkContext.setLogLevel("ERROR")
         return spark
     except Exception as e:
-        st.error(f"Failed to initialize Spark: {str(e)}")
+        st.error(f"Không thể khởi tạo Spark: {str(e)}")
         return None
 
 spark = get_spark()
 
 if spark is None:
-    st.error("❌ Spark session not available. Data info cannot be loaded.")
+    st.error("❌ Spark session không khả dụng. Không thể tải thông tin dữ liệu.")
     st.stop()
 
 # Paths
@@ -45,12 +45,12 @@ tab1, tab2, tab3 = st.tabs(["📊 Daily Filled", "📈 Daily Raw", "🔮 Prophet
 
 # Tab 1: Daily Filled
 with tab1:
-    st.markdown("### 📊 Daily Filled Dataset")
-    st.markdown("**Complete dataset with MA7/MA30, used for Prophet training**")
+    st.markdown("### 📊 Dataset Daily Filled")
+    st.markdown("**Dataset hoàn chỉnh với MA7/MA30, dùng để train Prophet**")
     
     if os.path.exists(daily_filled_path):
         try:
-            with st.spinner("Loading data..."):
+            with st.spinner("Đang tải dữ liệu..."):
                 df = spark.read.parquet(daily_filled_path)
                 
                 # Statistics
@@ -60,24 +60,24 @@ with tab1:
                     count("*").alias("rows")
                 ).toPandas()
                 
-                st.success("✅ Data loaded successfully!")
+                st.success("✅ Dữ liệu đã tải thành công!")
                 
                 # Display stats
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     total_rows = stats['rows'].sum()
-                    st.metric("Total Rows", f"{total_rows:,}")
+                    st.metric("Tổng số Rows", f"{total_rows:,}")
                 
                 with col2:
                     symbols_count = len(stats)
-                    st.metric("Symbols", symbols_count)
+                    st.metric("Số Symbols", symbols_count)
                 
                 with col3:
                     # Date range
                     min_date = stats['first_date'].min()
                     max_date = stats['last_date'].max()
-                    st.metric("Date Range", f"{min_date} to {max_date}")
+                    st.metric("Khoảng thời gian", f"{min_date} → {max_date}")
                 
                 st.markdown("---")
                 
@@ -88,9 +88,9 @@ with tab1:
                     hide_index=True,
                     column_config={
                         'symbol': 'Symbol',
-                        'first_date': 'First Date',
-                        'last_date': 'Last Date',
-                        'rows': st.column_config.NumberColumn('Rows', format="%d")
+                        'first_date': 'Ngày đầu',
+                        'last_date': 'Ngày cuối',
+                        'rows': st.column_config.NumberColumn('Số Rows', format="%d")
                     }
                 )
                 
@@ -101,28 +101,28 @@ with tab1:
                 schema_df = pd.DataFrame([
                     (field.name, str(field.dataType), field.nullable)
                     for field in df.schema.fields
-                ], columns=['Column', 'Type', 'Nullable'])
+                ], columns=['Tên cột', 'Kiểu dữ liệu', 'Cho phép NULL'])
                 
                 st.dataframe(schema_df, use_container_width=True, hide_index=True)
                 
                 # Sample data
-                st.markdown("### 🔍 Sample Data")
+                st.markdown("### 🔍 Dữ liệu Mẫu")
                 sample = df.limit(10).toPandas()
                 st.dataframe(sample, use_container_width=True, hide_index=True)
                 
         except Exception as e:
-            st.error(f"❌ Error loading daily_filled: {str(e)}")
+            st.error(f"❌ Lỗi khi tải daily_filled: {str(e)}")
     else:
-        st.warning(f"⚠️ Path not found: {daily_filled_path}")
+        st.warning(f"⚠️ Không tìm thấy: {daily_filled_path}")
 
 # Tab 2: Daily Raw
 with tab2:
-    st.markdown("### 📈 Daily Raw Dataset")
-    st.markdown("**Aggregated daily OHLC (before forward fill and MA computation)**")
+    st.markdown("### 📈 Dataset Daily Raw")
+    st.markdown("**Dữ liệu OHLC hàng ngày đã aggregate (trước khi forward fill và tính MA)**")
     
     if os.path.exists(daily_raw_path):
         try:
-            with st.spinner("Loading data..."):
+            with st.spinner("Đang tải dữ liệu..."):
                 df = spark.read.parquet(daily_raw_path)
                 
                 # Statistics
@@ -132,7 +132,7 @@ with tab2:
                     count("*").alias("rows")
                 ).toPandas()
                 
-                st.success("✅ Data loaded successfully!")
+                st.success("✅ Dữ liệu đã tải thành công!")
                 
                 # Display stats
                 col1, col2 = st.columns(2)
@@ -141,15 +141,21 @@ with tab2:
                     st.dataframe(
                         stats,
                         use_container_width=True,
-                        hide_index=True
+                        hide_index=True,
+                        column_config={
+                            'symbol': 'Symbol',
+                            'first_date': 'Ngày đầu',
+                            'last_date': 'Ngày cuối',
+                            'rows': st.column_config.NumberColumn('Số Rows', format="%d")
+                        }
                     )
                 
                 with col2:
                     st.info("""
                     **daily_raw vs daily_filled:**
-                    - daily_raw: Original aggregated data (may have gaps)
-                    - daily_filled: Forward-filled + MA computed
-                    - Row count should be similar (gaps filled)
+                    - `daily_raw`: Dữ liệu aggregate gốc (có thể có gaps)
+                    - `daily_filled`: Đã forward-fill và tính MA7/MA30
+                    - Số rows tương tự (gaps đã được điền)
                     """)
                 
                 st.markdown("---")
@@ -159,23 +165,23 @@ with tab2:
                 schema_df = pd.DataFrame([
                     (field.name, str(field.dataType))
                     for field in df.schema.fields
-                ], columns=['Column', 'Type'])
+                ], columns=['Tên cột', 'Kiểu dữ liệu'])
                 
                 st.dataframe(schema_df, use_container_width=True, hide_index=True)
                 
         except Exception as e:
-            st.error(f"❌ Error loading daily_raw: {str(e)}")
+            st.error(f"❌ Lỗi khi tải daily_raw: {str(e)}")
     else:
-        st.warning(f"⚠️ Path not found: {daily_raw_path}")
+        st.warning(f"⚠️ Không tìm thấy: {daily_raw_path}")
 
 # Tab 3: Prophet Input
 with tab3:
-    st.markdown("### 🔮 Prophet Input Dataset")
-    st.markdown("**Minimal schema for Prophet training (ds, y, symbol)**")
+    st.markdown("### 🔮 Dataset Prophet Input")
+    st.markdown("**Schema tối giản cho Prophet training (ds, y, symbol)**")
     
     if os.path.exists(prophet_input_path):
         try:
-            with st.spinner("Loading data..."):
+            with st.spinner("Đang tải dữ liệu..."):
                 df = spark.read.parquet(prophet_input_path)
                 
                 # Statistics
@@ -185,7 +191,7 @@ with tab3:
                     count("*").alias("rows")
                 ).toPandas()
                 
-                st.success("✅ Data loaded successfully!")
+                st.success("✅ Dữ liệu đã tải thành công!")
                 
                 st.dataframe(
                     stats,
@@ -193,9 +199,9 @@ with tab3:
                     hide_index=True,
                     column_config={
                         'symbol': 'Symbol',
-                        'first_date': 'First Date',
-                        'last_date': 'Last Date',
-                        'rows': st.column_config.NumberColumn('Rows', format="%d")
+                        'first_date': 'Ngày đầu',
+                        'last_date': 'Ngày cuối',
+                        'rows': st.column_config.NumberColumn('Số Rows', format="%d")
                     }
                 )
                 
@@ -203,30 +209,32 @@ with tab3:
                 
                 st.info("""
                 **Prophet Schema:**
-                - `ds`: Date (Prophet naming convention)
-                - `y`: Target variable (daily_close price)
+                - `ds`: Ngày (theo quy ước của Prophet)
+                - `y`: Biến mục tiêu (giá daily_close)
                 - `symbol`: Partition key
                 
-                **Note:** MA7/MA30 are added as regressors during training (joined from daily_filled)
+                **Lưu ý:** MA7/MA30 được thêm làm regressors trong quá trình training (join từ daily_filled)
                 """)
                 
                 # Sample data
-                st.markdown("### 🔍 Sample Data")
+                st.markdown("### 🔍 Dữ liệu Mẫu")
                 sample = df.limit(10).toPandas()
                 st.dataframe(sample, use_container_width=True, hide_index=True)
                 
         except Exception as e:
-            st.error(f"❌ Error loading prophet_input: {str(e)}")
+            st.error(f"❌ Lỗi khi tải prophet_input: {str(e)}")
     else:
-        st.warning(f"⚠️ Path not found: {prophet_input_path}")
+        st.warning(f"⚠️ Không tìm thấy: {prophet_input_path}")
 
 # Footer
 st.markdown("---")
 st.markdown("""
 **Data Pipeline:**
-1. **CSV** (Kaggle) → convert_to_parquet.py → **Parquet** (8M rows)
-2. **Parquet** → preprocess_step1.py → **daily_raw** (7,980 rows)
-3. **daily_raw** → preprocess_step2.py → **daily_filled** (7,980 rows + MA)
-4. **daily_filled** → extract → **prophet_input** (minimal schema)
-5. **prophet_input** → prophet_train.py → **Forecasts**
+1. **CSV** (Kaggle) → `convert_to_parquet.py` → **Parquet** (11.5M rows)
+2. **Parquet** → `preprocess_step1.py` → **daily_raw** (~8,000 rows)
+3. **daily_raw** → `preprocess_step2.py` → **daily_filled** (+ MA7/MA30)
+4. **daily_filled** → extract → **prophet_input** (schema tối giản)
+5. **prophet_input** → `prophet_train.py` → **Forecasts**
+
+📌 **Data Snapshot:** 01/01/2012 → 14/12/2025 (BTC + ETH)
 """)

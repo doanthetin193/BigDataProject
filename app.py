@@ -1,9 +1,9 @@
 """
 ================================================================================
-STREAMLIT DASHBOARD - CRYPTO PRICE FORECASTING
+STREAMLIT DASHBOARD - DỰ ĐOÁN GIÁ TIỀN MÃ HÓA
 ================================================================================
-Main entry point for the dashboard
-Run: streamlit run app.py
+Giao diện chính của dashboard
+Chạy: streamlit run app.py
 ================================================================================
 """
 
@@ -14,7 +14,7 @@ from datetime import datetime
 
 # Page config
 st.set_page_config(
-    page_title="Crypto Forecasting Dashboard",
+    page_title="Dự đoán Giá Crypto",
     page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -48,22 +48,22 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Sidebar
-st.sidebar.title("🚀 Navigation")
+st.sidebar.title("🚀 Điều hướng")
 st.sidebar.markdown("---")
 
 # Project info
 st.sidebar.markdown("""
-### 📊 Project Info
-- **Name:** Crypto Price Forecasting
-- **Author:** Đoàn Thế Tín
+### 📊 Thông tin Đồ án
+- **Tên:** Dự đoán Giá Tiền Mã Hóa
+- **Tác giả:** Đoàn Thế Tín
 - **MSSV:** 4551190056
-- **Date:** 17/12/2025
+- **Ngày:** 24/12/2025
 """)
 
 st.sidebar.markdown("---")
 
 # Data status
-st.sidebar.markdown("### 📁 Data Status")
+st.sidebar.markdown("### 📁 Trạng thái Dữ liệu")
 
 # Check if data exists
 base_dir = "data_analysis"
@@ -72,46 +72,46 @@ forecasts_dir = os.path.join(base_dir, "prophet_forecasts")
 daily_filled = os.path.join(base_dir, "daily_filled")
 
 if os.path.exists(metrics_path):
-    st.sidebar.success("✅ Metrics available")
+    st.sidebar.success("✅ Metrics có sẵn")
 else:
-    st.sidebar.error("❌ Metrics not found")
+    st.sidebar.error("❌ Chưa có Metrics")
 
 if os.path.exists(forecasts_dir):
-    st.sidebar.success("✅ Forecasts available")
+    st.sidebar.success("✅ Forecasts có sẵn")
 else:
-    st.sidebar.error("❌ Forecasts not found")
+    st.sidebar.error("❌ Chưa có Forecasts")
 
 if os.path.exists(daily_filled):
-    st.sidebar.success("✅ Daily data available")
+    st.sidebar.success("✅ Daily data có sẵn")
 else:
-    st.sidebar.error("❌ Daily data not found")
+    st.sidebar.error("❌ Chưa có Daily data")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"**Last updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+st.sidebar.markdown(f"**Cập nhật lần cuối:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 # Main page
-st.markdown('<p class="main-header">🚀 Cryptocurrency Price Forecasting Dashboard</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-header">🚀 Dashboard Dự đoán Giá Tiền Mã Hóa</p>', unsafe_allow_html=True)
 
 st.markdown("""
-## Welcome to Lambda Architecture Demo
+## Chào mừng đến với Demo Lambda Architecture
 
-This dashboard visualizes the results of a **Big Data project** using:
-- **Lambda Architecture** (Batch + Speed + Serving layers)
-- **Apache Spark** for distributed processing
-- **Apache Kafka** for real-time streaming
-- **Prophet** (Facebook) for time series forecasting
+Dashboard này hiển thị kết quả của **Đồ án Big Data** sử dụng:
+- **Lambda Architecture** (Batch + Speed + Serving Layer)
+- **Apache Spark** để xử lý dữ liệu phân tán
+- **Apache Kafka** để streaming real-time
+- **Prophet** (Facebook) để dự đoán chuỗi thời gian
 
-### 📋 Available Pages
+### 📋 Các Trang Có Sẵn
 
-Navigate using the sidebar to explore:
+Sử dụng sidebar để điều hướng:
 
-1. **📊 Metrics** - View model performance metrics (MAPE, MSE, CV scores)
-2. **📈 Forecasts** - Interactive forecast visualizations (actual vs predicted)
-3. **📁 Data Info** - Dataset statistics and information
+1. **📊 Metrics** - Xem các chỉ số hiệu suất model (MAPE, MSE, Cross-validation)
+2. **📈 Forecasts** - Biểu đồ dự đoán tương tác (Thực tế vs Dự đoán)
+3. **📁 Data Info** - Thống kê và thông tin dataset
 
 ---
 
-### 🎯 Quick Stats
+### 🎯 Thống kê Nhanh
 """)
 
 # Load quick stats
@@ -122,70 +122,71 @@ try:
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("Symbols", len(df_metrics), help="Number of cryptocurrencies")
+            st.metric("Số Symbols", len(df_metrics), help="Số lượng tiền mã hóa")
         
         with col2:
             avg_mape = df_metrics['mape'].mean()
-            st.metric("Avg MAPE", f"{avg_mape:.2f}%", help="Average prediction error")
+            st.metric("MAPE Trung bình", f"{avg_mape:.2f}%", help="Sai số dự đoán trung bình")
         
         with col3:
             best_symbol = df_metrics.loc[df_metrics['mape'].idxmin(), 'symbol']
-            st.metric("Best Model", best_symbol, help="Lowest MAPE")
+            st.metric("Model Tốt nhất", best_symbol, help="MAPE thấp nhất")
         
         with col4:
-            st.metric("Model", "Prophet", help="Time series forecasting model")
+            st.metric("Thuật toán", "Prophet", help="Mô hình dự đoán chuỗi thời gian")
     else:
-        st.warning("⚠️ Metrics data not found. Please run `prophet_train.py` first.")
+        st.warning("⚠️ Chưa có dữ liệu Metrics. Vui lòng chạy `prophet_train.py` trước.")
         
 except Exception as e:
-    st.error(f"Error loading metrics: {str(e)}")
+    st.error(f"Lỗi khi tải metrics: {str(e)}")
 
 st.markdown("---")
 
 # Project description
 st.markdown("""
-### 📖 Project Overview
+### 📖 Tổng quan Đồ án
 
-**Lambda Architecture Pipeline:**
+**Pipeline Lambda Architecture:**
 
-1. **Batch Layer** 
-   - Historical data from Kaggle (2012-2025)
-   - Binance API backfill for gaps
-   - Daily OHLC aggregation
+1. **Batch Layer** (Xử lý theo lô)
+   - Dữ liệu lịch sử từ Kaggle (2012-2025)
+   - Backfill từ Binance API cho các ngày thiếu
+   - Aggregate dữ liệu 1-phút thành Daily OHLC
 
-2. **Speed Layer**
+2. **Speed Layer** (Xử lý thời gian thực)
    - Kafka streaming (real-time)
-   - Producer polls API every 1 second
-   - Consumer aggregates to daily
+   - Producer lấy data từ API mỗi 1 giây
+   - Consumer aggregate thành dữ liệu ngày
 
-3. **Serving Layer**
-   - Merges Batch + Speed data
-   - Deduplication and MA computation
-   - Prophet-ready format
+3. **Serving Layer** (Phục vụ dữ liệu)
+   - Merge dữ liệu Batch + Speed
+   - Loại bỏ trùng lặp và tính Moving Average
+   - Format dữ liệu cho Prophet
 
-4. **ML Layer**
+4. **ML Layer** (Học máy)
    - Prophet time series forecasting
-   - Grid search hyperparameter tuning
-   - Cross-validation
-   - MAPE < 5% accuracy
+   - Grid Search để tìm hyperparameters tốt nhất
+   - Cross-validation để đánh giá độ ổn định
+   - Đạt độ chính xác MAPE < 5%
 
 ---
 
-### 🚀 How to Use
+### 🚀 Hướng dẫn Sử dụng
 
-1. **View Metrics**: Check model performance on different symbols
-2. **Explore Forecasts**: See interactive predictions with confidence intervals
-3. **Check Data**: Review dataset statistics and timeline
+1. **Xem Metrics**: Kiểm tra hiệu suất model cho từng coin
+2. **Khám phá Forecasts**: Xem dự đoán tương tác với khoảng tin cậy
+3. **Kiểm tra Data**: Xem thống kê và timeline dữ liệu
 
-**Note:** Data is updated by running Python scripts in `scripts/` directory.
+**Lưu ý:** Dữ liệu được cập nhật bằng cách chạy các script Python trong thư mục `scripts/`.
 
 ---
 
-### 📚 Documentation
+### 📚 Tài liệu
 
-Full documentation available in:
-- `BAO_CAO_BIG_DATA_PROJECT.md` - Complete report
-- `docs/` folder - Detailed code explanations
+Tài liệu đầy đủ có trong:
+- `BAO_CAO_CHINH_THUC.md` - Báo cáo đồ án chính thức
+- `docs/` - Thư mục chứa giải thích code chi tiết
+- `MERMAID_DIAGRAMS.md` - Sơ đồ Mermaid cho báo cáo
 
 """)
 
@@ -193,6 +194,6 @@ Full documentation available in:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
-    <p>Built with ❤️ using Streamlit | © 2025 Đoàn Thế Tín</p>
+    <p>Xây dựng với ❤️ sử dụng Streamlit | © 2025 Đoàn Thế Tín - KTPM45</p>
 </div>
 """, unsafe_allow_html=True)

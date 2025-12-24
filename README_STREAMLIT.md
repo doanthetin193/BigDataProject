@@ -1,134 +1,142 @@
-# 🚀 Streamlit Dashboard - Crypto Price Forecasting
+# 🚀 Streamlit Dashboard - Dự đoán Giá Tiền Mã Hóa
 
-## Quick Start
+## Khởi động Nhanh
 
-### 1. Install Dependencies
+### 1. Cài đặt Dependencies
 ```bash
 pip install -r requirements_web.txt
 ```
 
-### 2. Run Dashboard
+### 2. Chạy Dashboard
 ```bash
 streamlit run app.py
 ```
 
-The dashboard will open in your browser at: **http://localhost:8501**
+Dashboard sẽ mở trên trình duyệt tại: **http://localhost:8501**
 
 ---
 
-## 📋 Features
+## 📋 Tính năng
 
-### Home Page (app.py)
-- Project overview
-- Quick statistics
-- Lambda Architecture explanation
-- Navigation guide
+### Trang chủ (app.py)
+- Tổng quan đồ án
+- Thống kê nhanh
+- Giới thiệu Lambda Architecture
+- Hướng dẫn điều hướng
 
-### 📊 Metrics Page
-- Model performance table (MAPE, MSE, CV MAPE)
-- MAPE comparison bar chart
+### 📊 Trang Metrics
+- Bảng hiệu suất model (MAPE, MSE, CV MAPE)
+- Biểu đồ so sánh MAPE
 - Cross-validation vs Test MAPE
-- Hyperparameters display
-- Download metrics CSV
+- Hyperparameters tốt nhất
+- Tải xuống metrics CSV
 
-### 📈 Forecasts Page
-- Symbol selection (BTC/ETH)
-- Interactive actual vs predicted chart
-- Error distribution histogram
-- Error over time line chart
-- Recent predictions table
-- Download predictions CSV
+### 📈 Trang Forecasts
+- Chọn symbol (BTC/ETH)
+- Biểu đồ tương tác Thực tế vs Dự đoán
+- Histogram phân phối sai số
+- Sai số theo thời gian
+- Bảng dự đoán gần đây
+- Tải xuống predictions CSV
 
-### 📁 Data Info Page
-- Daily filled dataset statistics
-- Daily raw dataset info
-- Prophet input schema
-- Sample data preview
-- Data pipeline explanation
+### 📁 Trang Data Info
+- Thống kê dataset Daily Filled
+- Thống kê dataset Daily Raw
+- Schema Prophet Input
+- Dữ liệu mẫu
+- Giải thích pipeline
 
 ---
 
-## 🎨 Screenshots
+## 🎨 Giao diện
 
-**Home:**
+**Trang chủ:**
 ```
 ┌─────────────────────────────────────────┐
-│  🚀 Cryptocurrency Price Forecasting    │
+│  🚀 Dashboard Dự đoán Giá Tiền Mã Hóa   │
 │                                         │
 │  Metrics  |  Forecasts  |  Data Info   │
 │                                         │
-│  Quick Stats:                           │
-│  Symbols: 2  | Avg MAPE: 2.96%         │
-│  Best Model: BTCUSDT                    │
+│  Thống kê Nhanh:                        │
+│  Symbols: 2  | MAPE TB: 2.96%          │
+│  Model tốt nhất: BTCUSDT                │
 │                                         │
-│  Project Overview...                    │
+│  Tổng quan Đồ án...                     │
 └─────────────────────────────────────────┘
 ```
 
 ---
 
-## 📂 File Structure
+## 📂 Cấu trúc File
 
 ```
 BigDataProject/
-├── app.py                          # Main entry point
+├── app.py                          # Entry point chính
 ├── pages/
-│   ├── 1_📊_Metrics.py            # Metrics visualization
-│   ├── 2_📈_Forecasts.py          # Forecast charts
-│   └── 3_📁_Data_Info.py          # Dataset info
+│   ├── 1_📊_Metrics.py            # Hiển thị metrics
+│   ├── 2_📈_Forecasts.py          # Biểu đồ dự đoán
+│   └── 3_📁_Data_Info.py          # Thông tin dataset
 ├── .streamlit/
-│   └── config.toml                 # Streamlit config
+│   └── config.toml                 # Config Streamlit
 ├── requirements_web.txt            # Web dependencies
-└── README_STREAMLIT.md             # This file
+└── README_STREAMLIT.md             # File này
 ```
 
 ---
 
-## 🔧 Troubleshooting
+## 🔧 Xử lý Lỗi
 
-### Dashboard shows "Data not found"
-**Solution:** Run data processing scripts first:
+### Dashboard hiển thị "Data not found"
+**Giải pháp:** Chạy các script xử lý dữ liệu trước:
 ```bash
 python scripts/ml_models/prophet_train.py
 ```
 
-### Spark errors
-**Solution:** Check if data_analysis/ folder exists and has Parquet files
+### Lỗi Spark
+**Giải pháp:** Kiểm tra thư mục `data_analysis/` có các file Parquet chưa
 
-### Port already in use
-**Solution:** Use different port:
+### Port đã được sử dụng
+**Giải pháp:** Dùng port khác:
 ```bash
 streamlit run app.py --server.port 8502
 ```
 
 ---
 
-## 💡 Tips
+## 💡 Gợi ý
 
-1. **Refresh data:** After running prophet_train.py, refresh browser
-2. **Multiple symbols:** Add more cryptocurrencies by updating symbols list
-3. **Custom styling:** Edit `.streamlit/config.toml` for theme
-4. **Deploy:** Use Streamlit Cloud (free) for online demo
-
----
-
-## 🎓 For Presentation
-
-**Demo flow:**
-1. Open dashboard: `streamlit run app.py`
-2. Show Home → Explain Lambda Architecture
-3. Navigate to Metrics → Show MAPE < 5%
-4. Navigate to Forecasts → Interactive chart demo
-5. Navigate to Data Info → Explain pipeline
-
-**Key points:**
-- Interactive (not static PNG files)
-- Real-time data from Parquet
-- Professional UI
-- Easy to understand
+1. **Làm mới dữ liệu:** Sau khi chạy `prophet_train.py`, refresh trình duyệt
+2. **Thêm symbols:** Cập nhật danh sách symbols trong code
+3. **Tùy chỉnh theme:** Sửa file `.streamlit/config.toml`
+4. **Deploy online:** Sử dụng Streamlit Cloud (miễn phí)
 
 ---
 
-**Author:** Đoàn Thế Tín  
-**Date:** 24/12/2025  
+## 🎓 Cho Buổi Thuyết trình
+
+**Flow demo:**
+1. Mở dashboard: `streamlit run app.py`
+2. Giới thiệu Trang chủ → Giải thích Lambda Architecture
+3. Chuyển đến Metrics → Cho thấy MAPE < 5%
+4. Chuyển đến Forecasts → Demo biểu đồ tương tác
+5. Chuyển đến Data Info → Giải thích pipeline
+
+**Điểm nhấn:**
+- Giao diện tương tác (không phải file PNG tĩnh)
+- Dữ liệu real-time từ Parquet
+- UI chuyên nghiệp
+- Dễ hiểu và trực quan
+
+---
+
+## 📚 Tài liệu Liên quan
+
+- `BAO_CAO_CHINH_THUC.md` - Báo cáo đồ án chính thức
+- `docs/FAQ_GIAI_THICH_BAO_CAO.md` - Giải thích các thuật ngữ
+- `MERMAID_DIAGRAMS.md` - Sơ đồ cho báo cáo
+
+---
+
+**Tác giả:** Đoàn Thế Tín  
+**Ngày:** 24/12/2025  
 **Framework:** Streamlit 1.28+
